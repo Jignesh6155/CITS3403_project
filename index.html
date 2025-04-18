@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career HQ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="flex items-center justify-center min-h-screen bg-purple-100">
+
+  <div class="relative w-[800px] h-[500px] bg-white rounded-xl shadow-lg overflow-hidden flex">
+    
+    <!-- Left panel (Sign in) -->
+    <div id="left-panel" class="w-1/2 bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex flex-col items-center justify-center p-10 transition-all duration-500">
+      <h2 class="text-3xl font-bold mb-4">Already have an account?</h2>
+      <p class="mb-6">Sign in with your email & password</p>
+      <button onclick="showLogin()" class="px-6 py-2 border-2 border-white rounded-full hover:bg-white hover:text-purple-700 transition-all">SIGN IN</button>
+    </div>
+
+    <!-- Right panel (Sign up form) -->
+    <div id="right-panel" class="w-1/2 flex flex-col justify-center items-center p-10 transition-all duration-500">
+      <h2 class="text-3xl font-bold mb-6 text-purple-700">Create account</h2>
+      <input type="text" placeholder="Name" class="input-style">
+      <input type="email" placeholder="Email address" class="input-style">
+      <input type="password" placeholder="Password" class="input-style mb-4">
+      <button class="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition">SIGN UP</button>
+    </div>
+
+    <!-- Sliding login form -->
+    <div id="login-form" class="absolute top-0 left-1/2 w-1/2 h-full bg-white p-10 flex flex-col justify-center items-center transition-all duration-500 translate-x-full">
+      <h2 class="text-3xl font-bold mb-6 text-purple-700">Welcome Back!</h2>
+      <input type="email" placeholder="Email" class="input-style">
+      <input type="password" placeholder="Password" class="input-style mb-4">
+      <button class="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition">LOGIN</button>
+      <button onclick="hideLogin()" class="mt-4 text-sm text-purple-500 hover:underline">Back to Sign Up</button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
