@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
+  <h1 class="text-xl font-semibold text-indigo-900">Good afternoon, User 👋</h1>
+  <div class="flex gap-4 items-center">
+    <i data-lucide="bell" class="w-5 h-5 text-gray-500"></i>
+    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+  </div>
+</header>
+
+<main class="flex-1 p-6 overflow-y-auto">
+  <!-- Top Overview Cards -->
+  <div class="flex flex-wrap gap-6 mb-6">
+    <div class="flex-1 min-w-[200px] bg-white border border-gray-200 p-5 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">Applications In Progress</p>
+      <p class="text-2xl font-bold">12</p>
+    </div>
+    <div class="flex-1 min-w-[200px] bg-white border border-gray-200 p-5 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">Upcoming Interviews</p>
+      <p class="text-2xl font-bold">3</p>
+    </div>
+    <div class="flex-1 min-w-[200px] bg-white border border-gray-200 p-5 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">Profile Strength</p>
+      <p class="text-2xl font-bold">85%</p>
+    </div>
+    <div class="flex-1 min-w-[200px] bg-white border border-gray-200 p-5 shadow-sm">
+      <p class="text-xs text-gray-500 mb-1">Badges Earned</p>
+      <p class="text-2xl font-bold">5</p>
+    </div>
+  </div>
+
+  <!-- Application Insights -->
+  <section class="mb-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Application Insights</h2>
+    <div class="bg-white border border-gray-200 p-4 shadow-sm">
+      <span class="text-gray-400">[ Chart Placeholder ]</span>
+    </div>
+  </section>
+
+  <!-- Activity & Team Updates -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div>
+      <h2 class="text-lg font-semibold text-gray-800 mb-3">Recent Activity</h2>
+      <div class="bg-white border border-gray-200 p-4 shadow-sm">
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3"><i data-lucide="arrow-up-right" class="w-5 h-5 text-green-500"></i> Submitted resume to Google</li>
+          <li class="flex items-center gap-3"><i data-lucide="message-circle" class="w-5 h-5 text-blue-500"></i> New message from recruiter</li>
+          <li class="flex items-center gap-3"><i data-lucide="calendar" class="w-5 h-5 text-indigo-500"></i> Interview confirmed for Monday</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <h2 class="text-lg font-semibold text-gray-800 mb-3">Team Shared Updates</h2>
+      <div class="bg-white border border-gray-200 p-4 shadow-sm">
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3"><i data-lucide="award" class="w-5 h-5 text-yellow-500"></i> Emma earned "Ace Interview" badge</li>
+          <li class="flex items-center gap-3"><i data-lucide="user-check" class="w-5 h-5 text-green-500"></i> Liam completed profile</li>
+          <li class="flex items-center gap-3"><i data-lucide="trending-up" class="w-5 h-5 text-purple-500"></i> Olivia reached 80% strength</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Share Achievements -->
+  <section>
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Share Your Achievements</h2>
+    <div class="bg-white border border-gray-200 p-4 shadow-sm flex items-center justify-between">
+      <p class="text-sm text-gray-600">Share your latest badge or interview update with your network.</p>
+      <button class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded shadow hover:bg-indigo-700">Share Now</button>
+    </div>
+  </section>
+</main>
+{% endblock %}

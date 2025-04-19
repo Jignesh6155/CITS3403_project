@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Common input style */
+  .input-style {
+    @apply w-full mb-4 px-4 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-purple-400;
+  }
+
+  /* Stat cards */
+  .card {
+    @apply bg-white p-4 border border-gray-200 rounded-none shadow-sm;
+  }
+
+  /* Chart placeholder */
+  .chart-placeholder {
+    @apply bg-white h-64 border border-gray-200 rounded-none shadow-sm flex items-center justify-center;
+  }
+
+  /* List placeholder */
+  .list-placeholder {
+    @apply bg-white h-64 border border-gray-200 rounded-none shadow-sm p-4 overflow-y-auto;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    @apply w-16 bg-gray-900 text-white flex flex-col items-center py-4;
+  }
+  .sidebar-logo {
+    @apply mb-8;
+  }
+  .sidebar-icon {
+    @apply w-6 h-6 bg-gray-700;
+  }
+
+  /* Top bar */
+  .topbar {
+    @apply flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200;
+  }
+  .search-input {
+    @apply px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-indigo-500;
+  }
+  .avatar-placeholder {
+    @apply w-8 h-8 bg-gray-300 rounded-full;
+  }
+}
