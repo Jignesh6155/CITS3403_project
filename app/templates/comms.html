@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set active_page = "comms" %}
+
+{% block title %}Career Climb Arena{% endblock %}
+
+{% block content %}
+<header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
+  <h1 class="text-xl font-semibold text-indigo-900">Career Climb Arena</h1>
+  <div class="flex gap-4 items-center">
+    <i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-500"></i>
+    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+  </div>
+</header>
+
+<main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto">
+
+  <!-- Career Score Panel -->
+  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Career Score</h2>
+    <p class="text-4xl font-bold text-indigo-600 mb-2">312</p>
+    <p class="text-sm text-gray-500 mb-4">Tier: <span class="font-medium text-indigo-700">Gold</span></p>
+    <div class="flex flex-col gap-2">
+      <label class="flex items-center text-sm">
+        <input type="checkbox" class="mr-2" checked> Share Applications Sent
+      </label>
+      <label class="flex items-center text-sm">
+        <input type="checkbox" class="mr-2" checked> Share Interview Rate
+      </label>
+      <label class="flex items-center text-sm">
+        <input type="checkbox" class="mr-2"> Share Avg. Response Time
+      </label>
+    </div>
+    <button class="mt-4 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">Invite to Career Challenge</button>
+  </section>
+
+  <!-- Career Leaderboard -->
+  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h2>
+    <ul class="space-y-3 text-sm">
+      <li class="bg-indigo-50 px-4 py-3 rounded-md flex justify-between">
+        <span>🏆 <strong>You</strong> — 312 pts</span>
+        <span class="text-green-600">Gold</span>
+      </li>
+      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
+        <span>💼 <strong>User2</strong> — 290 pts</span>
+        <span class="text-yellow-500">Silver</span>
+      </li>
+      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
+        <span>🚀 <strong>User3</strong> — 260 pts</span>
+        <span class="text-blue-500">Bronze</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Comparison Chart -->
+  <section class="col-span-1 lg:col-span-2 bg-white border border-gray-200 p-6 shadow rounded-lg">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Stats vs Shared Users</h2>
+    <canvas id="comparisonChart" height="100"></canvas>
+  </section>
+
+  <!-- Badges -->
+  <section class="col-span-1 lg:col-span-2 bg-white border border-gray-200 p-6 shadow rounded-lg">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Badges</h2>
+    <div class="flex gap-4 flex-wrap text-sm">
+      <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full">🎯 First Interview!</span>
+      <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">🏅 Offer Achieved</span>
+      <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full">📈 10 Apps Logged</span>
+      <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full">⏱ Fast Responder</span>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  new Chart(document.getElementById('comparisonChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Apps Sent', 'Interviews', 'Offers'],
+      datasets: [
+        {
+          label: 'You',
+          data: [42, 11, 3],
+          backgroundColor: 'rgba(99, 102, 241, 0.7)'
+        },
+        {
+          label: 'User2',
+          data: [40, 10, 2],
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        },
+        {
+          label: 'User3',
+          data: [30, 9, 1],
+          backgroundColor: 'rgba(234, 179, 8, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
+{% endblock %}
