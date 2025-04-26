@@ -1,98 +1,151 @@
 {% extends "base.html" %}
 {% set active_page = "job-tracker" %}
+
 {% block title %}Job Tracker Board{% endblock %}
+
 {% block content %}
 <div class="flex-1 flex flex-col">
-<header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-  <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded shadow hover:bg-indigo-700">+ Add Application</button>
-</header>
-<main class="flex-1 p-6 overflow-y-auto">
-  <div class="overflow-x-auto">
-    <div id="columns" class="flex gap-4 min-w-max">
-      <!-- Columns populated by JS -->
+  <!-- HEADER + BUTTON -->
+  <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
+    <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
+    <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700">
+      + Add Application
+    </button>
+  </header>
+
+  <!-- COLUMNS -->
+  <main class="flex-1 p-6 overflow-y-auto">
+    <div class="overflow-x-auto">
+      <div id="columns" class="flex gap-4 min-w-max"></div>
     </div>
-  </div>
-</main>
-<!-- Modal -->
-<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-  <div class="bg-white p-6 rounded shadow-lg w-96">
-    <div class="flex justify-between mb-4">
-      <h2 class="text-lg font-semibold text-gray-800">Add New Job</h2>
-      <button id="closeModal" class="text-gray-600 hover:text-red-500">&times;</button>
+  </main>
+
+  <!-- MODAL -->
+  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-none shadow-lg p-8 w-full max-w-3xl">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-indigo-900">Add New Job</h2>
+        <button id="closeModal" class="text-gray-600 hover:text-red-500 text-2xl">&times;</button>
+      </div>
+      <form id="jobForm" class="grid grid-cols-2 gap-6">
+        <!-- left column -->
+        <div class="flex flex-col">
+          <label for="title" class="text-gray-700 mb-2 text-sm font-medium">Position Title *</label>
+          <input id="title" class="input-style" required placeholder="Software Engineer"/>
+        </div>
+        <div class="flex flex-col">
+          <label for="company" class="text-gray-700 mb-2 text-sm font-medium">Company *</label>
+          <input id="company" class="input-style" required placeholder="Google"/>
+        </div>
+        <div class="flex flex-col">
+          <label for="location" class="text-gray-700 mb-2 text-sm font-medium">Location *</label>
+          <input id="location" class="input-style" required placeholder="Sydney"/>
+        </div>
+        <div class="flex flex-col">
+          <label for="jobType" class="text-gray-700 mb-2 text-sm font-medium">Job Type *</label>
+          <select id="jobType" class="input-style" required>
+            <option>Internship</option>
+            <option>Graduate Role</option>
+            <option>Full-Time</option>
+            <option>Part-Time</option>
+          </select>
+        </div>
+        <!-- right column -->
+        <div class="flex flex-col">
+          <label for="status" class="text-gray-700 mb-2 text-sm font-medium">Job Status *</label>
+          <select id="status" class="input-style" required>
+            <option>Saved</option>
+            <option>Applied</option>
+            <option>Screen</option>
+            <option>Interviewing</option>
+            <option>Offer</option>
+            <option>Accepted</option>
+            <option>Archived</option>
+            <option>Discontinued</option>
+          </select>
+        </div>
+        <div class="flex flex-col">
+          <label for="resume" class="text-gray-700 mb-2 text-sm font-medium">Resume Uploaded</label>
+          <select id="resume" class="input-style">
+            <option>Default Resume</option>
+            <option>Resume 1</option>
+            <option>Resume 2</option>
+          </select>
+        </div>
+
+        <!-- actions -->
+        <div class="col-span-2 flex justify-end space-x-4 mt-6">
+          <button type="button" id="cancelBtn"
+                  class="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-none">
+            Cancel
+          </button>
+          <button type="submit" class="px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-none">
+            Add
+          </button>
+        </div>
+      </form>
     </div>
-    <form id="jobForm" class="space-y-4">
-      <input type="text" id="title" placeholder="Position Title" required class="w-full border border-gray-300 p-2 rounded">
-      <input type="text" id="company" placeholder="Company" required class="w-full border border-gray-300 p-2 rounded">
-      <input type="text" id="location" placeholder="Location" required class="w-full border border-gray-300 p-2 rounded">
-      <select id="status" class="w-full border border-gray-300 p-2 rounded">
-        <option>Saved</option>
-        <option>Applied</option>
-        <option>Screen</option>
-        <option>Interviewing</option>
-        <option>Offer</option>
-        <option>Accepted</option>
-        <option>Archived</option>
-        <option>Discontinued</option>
-      </select>
-      <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded shadow hover:bg-indigo-700">Add</button>
-    </form>
   </div>
 </div>
-</div>  <!-- CLOSE WRAPPER -->
 {% endblock %}
+
 {% block scripts %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-  const columns = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"];
+  const columns = ["Saved","Applied","Screen","Interviewing","Offer","Accepted","Archived","Discontinued"];
   let jobs = [];
+
   function renderColumns() {
-    $('#columns').empty();
+    $("#columns").empty();
     columns.forEach(col => {
-      const colDiv = $(`
-        <div class="w-64 bg-white border border-gray-200 p-4 rounded shadow-sm" data-column="${col}" ondragover="event.preventDefault()" ondrop="onDrop(event, '${col}')">
-          <h2 class="text-lg font-semibold text-gray-800 mb-2">${col}</h2>
-          <div class="space-y-2" id="${col}-list"></div>
+      $("#columns").append(`
+        <div class="w-64 bg-white border p-4 rounded shadow-sm"
+             ondragover="event.preventDefault()"
+             ondrop="onDrop(event,'${col}')">
+          <h2 class="font-semibold mb-2">${col}</h2>
+          <div id="${col}-list" class="space-y-2"></div>
         </div>`);
-      $('#columns').append(colDiv);
     });
     renderJobs();
   }
+
   function renderJobs() {
-    columns.forEach(col => $(`#${col}-list`).empty());
-    jobs.forEach((job, index) => {
-      const jobCard = $(`<div class="bg-white border border-gray-200 p-3 rounded shadow cursor-move" draggable="true" ondragstart="onDragStart(event, ${index})">
-        <p class="font-medium text-indigo-900">${job.title}</p>
-        <p class="text-sm text-gray-600">${job.company}</p>
-        <p class="text-sm text-gray-400">${job.location}</p>
-      </div>`);
-      $(`#${job.status}-list`).append(jobCard);
+    columns.forEach(c => $(`#${c}-list`).empty());
+    jobs.forEach((job,i) => {
+      $(`#${job.status}-list`).append(`
+        <div class="bg-white border p-3 rounded shadow cursor-move"
+             draggable="true"
+             ondragstart="onDragStart(event,${i})">
+          <p class="font-medium">${job.title}</p>
+          <p class="text-sm text-gray-600">${job.company}</p>
+          <p class="text-sm text-gray-400">${job.location}</p>
+        </div>`);
     });
   }
-  function onDragStart(event, index) {
-    event.originalEvent.dataTransfer.setData("jobIndex", index);
-  }
-  function onDrop(event, col) {
-    const index = event.dataTransfer.getData("jobIndex");
-    jobs[index].status = col;
+
+  function onDragStart(e,i){ e.originalEvent.dataTransfer.setData("jobIndex",i); }
+  function onDrop(e,col){
+    const idx = e.dataTransfer.getData("jobIndex");
+    jobs[idx].status = col;
     renderJobs();
   }
-  $(document).ready(() => {
+
+  $(function(){
     renderColumns();
-    $('#addBtn').click(() => $('#modal').removeClass('hidden').addClass('flex'));
-    $('#closeModal').click(() => $('#modal').addClass('hidden'));
-    $('#jobForm').submit((e) => {
+    $("#addBtn").click(()=>$("#modal").removeClass("hidden").addClass("flex"));
+    $("#closeModal,#cancelBtn").click(()=>$("#modal").addClass("hidden"));
+    $("#jobForm").submit(e=>{
       e.preventDefault();
-      const newJob = {
-        title: $('#title').val(),
-        company: $('#company').val(),
-        location: $('#location').val(),
-        status: $('#status').val()
-      };
-      jobs.push(newJob);
+      jobs.push({
+        title:$("#title").val(),
+        company:$("#company").val(),
+        location:$("#location").val(),
+        jobType:$("#jobType").val(),
+        status:$("#status").val(),
+        resume:$("#resume").val()
+      });
       renderJobs();
-      $('#modal').addClass('hidden');
-      $('#jobForm')[0].reset();
+      $("#modal").addClass("hidden");
+      e.target.reset();
     });
   });
 </script>
