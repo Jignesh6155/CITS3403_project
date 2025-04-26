@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% set active_page = "job-tracker" %}
+{% block title %}Job Tracker Board{% endblock %}
+{% block content %}
+<div class="flex-1 flex flex-col">
+<header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
+  <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
+  <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded shadow hover:bg-indigo-700">+ Add Application</button>
+</header>
+<main class="flex-1 p-6 overflow-y-auto">
+  <div class="overflow-x-auto">
+    <div id="columns" class="flex gap-4 min-w-max">
+      <!-- Columns populated by JS -->
+    </div>
+  </div>
+</main>
+<!-- Modal -->
+<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white p-6 rounded shadow-lg w-96">
+    <div class="flex justify-between mb-4">
+      <h2 class="text-lg font-semibold text-gray-800">Add New Job</h2>
+      <button id="closeModal" class="text-gray-600 hover:text-red-500">&times;</button>
+    </div>
+    <form id="jobForm" class="space-y-4">
+      <input type="text" id="title" placeholder="Position Title" required class="w-full border border-gray-300 p-2 rounded">
+      <input type="text" id="company" placeholder="Company" required class="w-full border border-gray-300 p-2 rounded">
+      <input type="text" id="location" placeholder="Location" required class="w-full border border-gray-300 p-2 rounded">
+      <select id="status" class="w-full border border-gray-300 p-2 rounded">
+        <option>Saved</option>
+        <option>Applied</option>
+        <option>Screen</option>
+        <option>Interviewing</option>
+        <option>Offer</option>
+        <option>Accepted</option>
+        <option>Archived</option>
+        <option>Discontinued</option>
+      </select>
+      <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded shadow hover:bg-indigo-700">Add</button>
+    </form>
+  </div>
+</div>
+</div>  <!-- CLOSE WRAPPER -->
+{% endblock %}
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  const columns = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"];
+  let jobs = [];
+  function renderColumns() {
+    $('#columns').empty();
+    columns.forEach(col => {
+      const colDiv = $(`
+        <div class="w-64 bg-white border border-gray-200 p-4 rounded shadow-sm" data-column="${col}" ondragover="event.preventDefault()" ondrop="onDrop(event, '${col}')">
+          <h2 class="text-lg font-semibold text-gray-800 mb-2">${col}</h2>
+          <div class="space-y-2" id="${col}-list"></div>
+        </div>`);
+      $('#columns').append(colDiv);
+    });
+    renderJobs();
+  }
+  function renderJobs() {
+    columns.forEach(col => $(`#${col}-list`).empty());
+    jobs.forEach((job, index) => {
+      const jobCard = $(`<div class="bg-white border border-gray-200 p-3 rounded shadow cursor-move" draggable="true" ondragstart="onDragStart(event, ${index})">
+        <p class="font-medium text-indigo-900">${job.title}</p>
+        <p class="text-sm text-gray-600">${job.company}</p>
+        <p class="text-sm text-gray-400">${job.location}</p>
+      </div>`);
+      $(`#${job.status}-list`).append(jobCard);
+    });
+  }
+  function onDragStart(event, index) {
+    event.originalEvent.dataTransfer.setData("jobIndex", index);
+  }
+  function onDrop(event, col) {
+    const index = event.dataTransfer.getData("jobIndex");
+    jobs[index].status = col;
+    renderJobs();
+  }
+  $(document).ready(() => {
+    renderColumns();
+    $('#addBtn').click(() => $('#modal').removeClass('hidden').addClass('flex'));
+    $('#closeModal').click(() => $('#modal').addClass('hidden'));
+    $('#jobForm').submit((e) => {
+      e.preventDefault();
+      const newJob = {
+        title: $('#title').val(),
+        company: $('#company').val(),
+        location: $('#location').val(),
+        status: $('#status').val()
+      };
+      jobs.push(newJob);
+      renderJobs();
+      $('#modal').addClass('hidden');
+      $('#jobForm')[0].reset();
+    });
+  });
+</script>
+{% endblock %}

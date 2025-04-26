@@ -15,19 +15,23 @@
         <div class="w-10 h-10 bg-white"></div>
       </div>
       <nav class="flex flex-col space-y-4 px-0 group-hover:px-2 items-center group-hover:items-start">
-        <a href="/dashboard" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'dashboard' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
+        <a href="{{ url_for('dashboard') }}" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'dashboard' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
           <i data-lucide="layout-dashboard" class="w-6 h-6 {% if active_page == 'dashboard' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
           <span class="hidden group-hover:inline-block text-sm font-medium text-white">Dashboard</span>
         </a>
-        <a href="/resume" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'resume' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
-          <i data-lucide="file-text" class="w-6 h-6 {% if active_page == 'resume' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
-          <span class="hidden group-hover:inline-block text-sm font-medium text-white">Resume</span>
+        <a href="{{ url_for('resume_analysis') }}" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'resume-analysis' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
+          <i data-lucide="file-text" class="w-6 h-6 {% if active_page == 'resume-analysis' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
+          <span class="hidden group-hover:inline-block text-sm font-medium text-white">Resume Analysis</span>
         </a>
-        <a href="/analytics" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'analytics' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
+        <a href="{{ url_for('job_tracker') }}" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'job-tracker' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
+          <i data-lucide="check-circle" class="w-6 h-6 {% if active_page == 'job-tracker' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
+          <span class="hidden group-hover:inline-block text-sm font-medium text-white">Job Tracker</span>
+        </a>
+        <a href="{{ url_for('analytics') }}" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'analytics' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
           <i data-lucide="bar-chart-3" class="w-6 h-6 {% if active_page == 'analytics' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
-          <span class="hidden group-hover:inline-block text-sm font-medium text-white">Analytics</span>
+          <span class="hidden group-hover:inline-block text-sm font-medium text-white">Job Scraper</span>
         </a>
-        <a href="/comms" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'comms' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
+        <a href="{{ url_for('comms') }}" class="flex items-center justify-center group-hover:justify-start gap-4 px-2 py-2 {% if active_page == 'comms' %}bg-gray-800{% endif %} hover:bg-gray-800 w-full transition-all">
           <i data-lucide="messages-square" class="w-6 h-6 {% if active_page == 'comms' %}text-indigo-400{% else %}text-gray-400 group-hover:text-indigo-400{% endif %}"></i>
           <span class="hidden group-hover:inline-block text-sm font-medium text-white">Comms</span>
         </a>
@@ -38,13 +42,11 @@
         <span class="hidden group-hover:inline-block text-sm font-medium text-white">Settings</span>
       </a>
     </aside>
-
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
       {% block content %}{% endblock %}
     </div>
   </div>
-
   <script>
     lucide.createIcons();
   </script>
