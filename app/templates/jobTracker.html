@@ -5,60 +5,62 @@
 
 {% block content %}
 <div class="flex-1 flex flex-col overflow-hidden">
-  <!-- HEADER + BUTTON -->
+  <!-- HEADER -->
   <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
     <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-    <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700">
+    <button id="openModal" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
       + Add Application
     </button>
   </header>
 
-  <!-- SEARCH SECTION -->
-  <div class="p-6 bg-white">
-    <div class="flex flex-wrap gap-4 mb-6">
-      <input type="text" id="searchInput" placeholder="Search for roles or companies" class="flex-1 rounded-full border-gray-300 px-4 py-2 border focus:outline-none" />
-      <input type="date" class="rounded border-gray-300 px-4 py-2 border focus:outline-none" />
-      <input type="date" class="rounded border-gray-300 px-4 py-2 border focus:outline-none" />
-      <select class="rounded border-gray-300 px-4 py-2 border focus:outline-none">
-        <option>Job Type</option>
-      </select>
-      <select class="rounded border-gray-300 px-4 py-2 border focus:outline-none">
-        <option>Status</option>
-      </select>
-    </div>
-
-    <!-- TABLE -->
-    <div class="overflow-y-auto" style="max-height: 500px;">
-      <table class="table-fixed w-full border">
-        <thead class="bg-indigo-100">
-          <tr>
-            <th class="w-1/8 p-4 text-left">Saved</th>
-            <th class="w-1/8 p-4 text-left">Applied</th>
-            <th class="w-1/8 p-4 text-left">Screen</th>
-            <th class="w-1/8 p-4 text-left">Interviewing</th>
-            <th class="w-1/8 p-4 text-left">Offer</th>
-            <th class="w-1/8 p-4 text-left">Accepted</th>
-            <th class="w-1/8 p-4 text-left">Archived</th>
-            <th class="w-1/8 p-4 text-left">Discontinued</th>
-          </tr>
-        </thead>
-        <tbody id="jobTableBody">
-          <!-- Dynamic rows will be inserted here -->
-        </tbody>
-      </table>
-    </div>
+  <!-- SEARCH BAR -->
+  <div class="p-4 flex flex-wrap gap-4">
+    <input type="text" id="searchInput" placeholder="Search for roles or companies" class="border rounded-lg px-4 py-2 flex-1" />
+    <input type="date" class="border rounded-lg px-4 py-2" />
+    <input type="date" class="border rounded-lg px-4 py-2" />
+    <select class="border rounded-lg px-4 py-2">
+      <option>Job Type</option>
+    </select>
+    <select class="border rounded-lg px-4 py-2">
+      <option>Status</option>
+    </select>
   </div>
 
+  <!-- TABLE -->
+  <main class="flex-1 overflow-x-auto p-4">
+    <table class="min-w-full table-fixed">
+      <thead class="bg-indigo-100">
+        <tr>
+          <th class="px-4 py-2">Saved</th>
+          <th class="px-4 py-2">Applied</th>
+          <th class="px-4 py-2">Screen</th>
+          <th class="px-4 py-2">Interviewing</th>
+          <th class="px-4 py-2">Offer</th>
+          <th class="px-4 py-2">Accepted</th>
+          <th class="px-4 py-2">Archived</th>
+          <th class="px-4 py-2">Discontinued</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
+          <td id="{{ column }}" ondragover="event.preventDefault()" ondrop="onDrop(event, '{{ column }}')" class="border h-40 align-top p-2"></td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
   <!-- MODAL -->
-  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md relative">
-      <button id="closeModal" class="absolute top-4 right-6 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+  <div id="modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+    <div class="bg-white p-8 rounded-lg w-full max-w-md relative">
+      <button id="closeModal" class="absolute top-4 right-6 text-gray-500 hover:text-black text-2xl">&times;</button>
       <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Add Application</h2>
-      <form id="jobForm" class="flex flex-col gap-4">
-        <input id="companyName" type="text" required placeholder="Company Name" class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
-        <input id="jobTitle" type="text" required placeholder="Job Title" class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
-        <input id="dateApplied" type="date" required class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
-        <select id="status" required class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none">
+      <form id="applicationForm" class="flex flex-col gap-4">
+        <input id="companyName" type="text" placeholder="Company Name" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="jobTitle" type="text" placeholder="Job Title" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="dateApplied" type="date" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <select id="status" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
           <option value="" disabled selected>Select Status</option>
           <option>Saved</option>
           <option>Applied</option>
@@ -69,7 +71,9 @@
           <option>Archived</option>
           <option>Discontinued</option>
         </select>
-        <button type="submit" class="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Add</button>
+        <button type="submit" class="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">
+          Add
+        </button>
       </form>
     </div>
   </div>
@@ -78,57 +82,59 @@
 
 {% block scripts %}
 <script>
-  const modal = document.getElementById("modal");
-  const addBtn = document.getElementById("addBtn");
-  const closeModal = document.getElementById("closeModal");
-  const jobForm = document.getElementById("jobForm");
-  const jobTableBody = document.getElementById("jobTableBody");
-  const searchInput = document.getElementById("searchInput");
+// OPEN/CLOSE MODAL
+const modal = document.getElementById('modal');
+document.getElementById('openModal').onclick = () => modal.classList.remove('hidden');
+document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
+window.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); }
 
-  addBtn.onclick = () => modal.classList.remove("hidden");
-  closeModal.onclick = () => modal.classList.add("hidden");
-  window.onclick = (event) => { if (event.target === modal) modal.classList.add("hidden"); }
+// DRAG LOGIC
+function onDragStart(event) {
+  event.dataTransfer.setData("text/plain", event.target.id);
+}
+function onDrop(event, columnId) {
+  const id = event.dataTransfer.getData("text/plain");
+  const jobBox = document.getElementById(id);
+  document.getElementById(columnId).appendChild(jobBox);
+}
 
-  jobForm.onsubmit = (e) => {
-    e.preventDefault();
+// SUBMIT FORM
+document.getElementById('applicationForm').onsubmit = function(e) {
+  e.preventDefault();
 
-    const companyName = document.getElementById("companyName").value;
-    const jobTitle = document.getElementById("jobTitle").value;
-    const dateApplied = document.getElementById("dateApplied").value;
-    const status = document.getElementById("status").value;
+  const company = document.getElementById('companyName').value;
+  const title = document.getElementById('jobTitle').value;
+  const date = document.getElementById('dateApplied').value;
+  const status = document.getElementById('status').value;
 
-    const newRow = document.createElement("tr");
+  const newId = 'job-' + Date.now();
+  const div = document.createElement('div');
+  div.id = newId;
+  div.setAttribute('draggable', 'true');
+  div.setAttribute('ondragstart', 'onDragStart(event)');
+  div.className = "bg-indigo-50 p-4 rounded-lg shadow mb-2 cursor-move";
 
-    const statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"];
-    statuses.forEach(col => {
-      const td = document.createElement("td");
-      td.className = "p-4 border text-sm align-top";
-      if (col === status) {
-        td.innerHTML = `
-          <div class="bg-indigo-50 p-2 rounded-lg shadow-sm">
-            <p class="font-semibold text-indigo-800">${jobTitle}</p>
-            <p class="text-xs text-gray-500">${companyName}</p>
-            <p class="text-xs text-gray-400">${dateApplied}</p>
-          </div>
-        `;
-      }
-      newRow.appendChild(td);
-    });
+  div.innerHTML = `
+    <p class="font-semibold text-indigo-800">${company}</p>
+    <p class="text-gray-600">${title}</p>
+    <p class="text-gray-400 text-sm">${date}</p>
+  `;
 
-    jobTableBody.appendChild(newRow);
+  document.getElementById(status).appendChild(div);
+  modal.classList.add('hidden');
+  this.reset();
+};
 
-    modal.classList.add("hidden");
-    jobForm.reset();
-  };
+// SIMPLE SEARCH
+const searchInput = document.getElementById("searchInput");
+searchInput.addEventListener("input", function() {
+  const filter = this.value.toLowerCase();
+  const jobs = document.querySelectorAll("td > div");
 
-  searchInput.addEventListener("input", function () {
-    const filter = this.value.toLowerCase();
-    const rows = jobTableBody.getElementsByTagName("tr");
-
-    for (let row of rows) {
-      let text = row.innerText.toLowerCase();
-      row.style.display = text.includes(filter) ? "" : "none";
-    }
+  jobs.forEach(job => {
+    const text = job.innerText.toLowerCase();
+    job.parentElement.style.display = text.includes(filter) ? "" : "none";
   });
+});
 </script>
 {% endblock %}
