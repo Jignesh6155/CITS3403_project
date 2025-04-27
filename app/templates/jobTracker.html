@@ -4,96 +4,62 @@
 {% block title %}Job Tracker Board{% endblock %}
 
 {% block content %}
-<div class="flex-1 flex flex-col">
-  <!-- HEADER + ADD APPLICATION BUTTON -->
+<div class="flex-1 flex flex-col overflow-hidden">
+  <!-- HEADER + BUTTON -->
   <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
     <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-    <button id="myBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+    <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700">
       + Add Application
     </button>
   </header>
 
-  <!-- SEARCH BAR + FILTERS -->
-  <main class="flex-1 p-6 overflow-y-auto">
-    <div class="overflow-x-auto space-y-6">
-      
-      <!-- Search bar -->
-      <div class="flex flex-wrap items-center gap-4 mb-6">
-        <div class="flex items-center border rounded-full px-4 py-2 w-full md:w-1/2 bg-white">
-          <i data-lucide="search" class="w-4 h-4 text-gray-400 mr-2"></i>
-          <input type="text" placeholder="Search for roles or companies" class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400">
-        </div>
-
-        <div class="flex items-center gap-2">
-          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
-          <span class="text-gray-400">→</span>
-          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
-        </div>
-
-        <select class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
-          <option>Job Type</option>
-          <option>Internship</option>
-          <option>Graduate Role</option>
-          <option>Full-Time</option>
-          <option>Part-Time</option>
-        </select>
-
-        <select class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
-          <option>Status</option>
-          <option>Saved</option>
-          <option>Applied</option>
-          <option>Screen</option>
-          <option>Interviewing</option>
-          <option>Offer</option>
-          <option>Accepted</option>
-          <option>Archived</option>
-          <option>Discontinued</option>
-        </select>
-      </div>
-
-      <!-- TABLE -->
-      <div class="border border-gray-300 rounded-lg overflow-hidden">
-        <div class="overflow-x-auto" style="max-height: 500px;">
-          <table id="jobTable" class="table-fixed w-full border-collapse">
-            <thead class="bg-indigo-100 text-indigo-800">
-              <tr>
-                <th class="border border-gray-300 p-2">Saved</th>
-                <th class="border border-gray-300 p-2">Applied</th>
-                <th class="border border-gray-300 p-2">Screen</th>
-                <th class="border border-gray-300 p-2">Interviewing</th>
-                <th class="border border-gray-300 p-2">Offer</th>
-                <th class="border border-gray-300 p-2">Accepted</th>
-                <th class="border border-gray-300 p-2">Archived</th>
-                <th class="border border-gray-300 p-2">Discontinued</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody" class="text-center">
-              {% for i in range(10) %}
-              <tr>
-                {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
-                <td class="border border-gray-300 p-6"></td>
-                {% endfor %}
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+  <!-- SEARCH SECTION -->
+  <div class="p-6 bg-white">
+    <div class="flex flex-wrap gap-4 mb-6">
+      <input type="text" id="searchInput" placeholder="Search for roles or companies" class="flex-1 rounded-full border-gray-300 px-4 py-2 border focus:outline-none" />
+      <input type="date" class="rounded border-gray-300 px-4 py-2 border focus:outline-none" />
+      <input type="date" class="rounded border-gray-300 px-4 py-2 border focus:outline-none" />
+      <select class="rounded border-gray-300 px-4 py-2 border focus:outline-none">
+        <option>Job Type</option>
+      </select>
+      <select class="rounded border-gray-300 px-4 py-2 border focus:outline-none">
+        <option>Status</option>
+      </select>
     </div>
-  </main>
 
-  <!-- THE POPUP MODAL -->
-  <div id="myModal" class="modal">
-    <div class="modal-content p-8 rounded-lg shadow-lg bg-white w-full max-w-md mx-auto">
-      <span class="close">&times;</span>
-      <h2 class="text-xl font-semibold mb-4 text-indigo-900 text-center">Add Application</h2>
-      <form id="applicationForm" class="flex flex-col gap-4">
-        <input id="companyName" type="text" placeholder="Company Name" required class="border rounded-md p-2 text-gray-700">
-        <input id="jobTitle" type="text" placeholder="Job Title" required class="border rounded-md p-2 text-gray-700">
-        <input id="dateApplied" type="date" required class="border rounded-md p-2 text-gray-700">
-        <select id="statusSelect" required class="border rounded-md p-2 text-gray-700">
-          <option value="">Select Status</option>
+    <!-- TABLE -->
+    <div class="overflow-y-auto" style="max-height: 500px;">
+      <table class="table-fixed w-full border">
+        <thead class="bg-indigo-100">
+          <tr>
+            <th class="w-1/8 p-4 text-left">Saved</th>
+            <th class="w-1/8 p-4 text-left">Applied</th>
+            <th class="w-1/8 p-4 text-left">Screen</th>
+            <th class="w-1/8 p-4 text-left">Interviewing</th>
+            <th class="w-1/8 p-4 text-left">Offer</th>
+            <th class="w-1/8 p-4 text-left">Accepted</th>
+            <th class="w-1/8 p-4 text-left">Archived</th>
+            <th class="w-1/8 p-4 text-left">Discontinued</th>
+          </tr>
+        </thead>
+        <tbody id="jobTableBody">
+          <!-- Dynamic rows will be inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md relative">
+      <button id="closeModal" class="absolute top-4 right-6 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+      <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Add Application</h2>
+      <form id="jobForm" class="flex flex-col gap-4">
+        <input id="companyName" type="text" required placeholder="Company Name" class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
+        <input id="jobTitle" type="text" required placeholder="Job Title" class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
+        <input id="dateApplied" type="date" required class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none" />
+        <select id="status" required class="input-style rounded border-gray-300 px-4 py-2 border focus:outline-none">
+          <option value="" disabled selected>Select Status</option>
           <option>Saved</option>
           <option>Applied</option>
           <option>Screen</option>
@@ -103,103 +69,66 @@
           <option>Archived</option>
           <option>Discontinued</option>
         </select>
-        <button type="submit" class="mt-4 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md">
-          Add
-        </button>
+        <button type="submit" class="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">Add</button>
       </form>
     </div>
   </div>
 </div>
-
-<!-- POPUP CSS -->
-<style>
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 50;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0,0,0,0.4);
-}
-.modal-content {
-  position: relative;
-  animation-name: animatetop;
-  animation-duration: 0.4s
-}
-@keyframes animatetop {
-  from {top: -300px; opacity: 0}
-  to {top: 0; opacity: 1}
-}
-.close {
-  color: black;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-}
-.close:hover, .close:focus {
-  color: #000;
-  text-decoration: none;
-  cursor: pointer;
-}
-</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Popup open/close
-var modal = document.getElementById("myModal");
-var btn = document.getElementById("myBtn");
-var span = document.getElementsByClassName("close")[0];
+  const modal = document.getElementById("modal");
+  const addBtn = document.getElementById("addBtn");
+  const closeModal = document.getElementById("closeModal");
+  const jobForm = document.getElementById("jobForm");
+  const jobTableBody = document.getElementById("jobTableBody");
+  const searchInput = document.getElementById("searchInput");
 
-btn.onclick = function() { modal.style.display = "block"; }
-span.onclick = function() { modal.style.display = "none"; }
-window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
+  addBtn.onclick = () => modal.classList.remove("hidden");
+  closeModal.onclick = () => modal.classList.add("hidden");
+  window.onclick = (event) => { if (event.target === modal) modal.classList.add("hidden"); }
 
-// Add job to table
-document.getElementById("applicationForm").addEventListener("submit", function(e) {
-  e.preventDefault();
-  var company = document.getElementById("companyName").value;
-  var job = document.getElementById("jobTitle").value;
-  var date = document.getElementById("dateApplied").value;
-  var status = document.getElementById("statusSelect").value;
+  jobForm.onsubmit = (e) => {
+    e.preventDefault();
 
-  var colIndex = {
-    "Saved": 0,
-    "Applied": 1,
-    "Screen": 2,
-    "Interviewing": 3,
-    "Offer": 4,
-    "Accepted": 5,
-    "Archived": 6,
-    "Discontinued": 7
-  }[status];
+    const companyName = document.getElementById("companyName").value;
+    const jobTitle = document.getElementById("jobTitle").value;
+    const dateApplied = document.getElementById("dateApplied").value;
+    const status = document.getElementById("status").value;
 
-  if (colIndex === undefined) return;
+    const newRow = document.createElement("tr");
 
-  let placed = false;
-  $("#tableBody tr").each(function() {
-    const cell = $(this).find("td").eq(colIndex);
-    if (cell.html().trim() === "") {
-      cell.html(`
-        <div class="flex flex-col items-center justify-center">
-          <div class="font-bold text-gray-700">${job}</div>
-          <div class="text-sm text-gray-500">${company}</div>
-          <div class="text-xs text-gray-400">${date}</div>
-        </div>
-      `);
-      placed = true;
-      return false; // Break loop
+    const statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"];
+    statuses.forEach(col => {
+      const td = document.createElement("td");
+      td.className = "p-4 border text-sm align-top";
+      if (col === status) {
+        td.innerHTML = `
+          <div class="bg-indigo-50 p-2 rounded-lg shadow-sm">
+            <p class="font-semibold text-indigo-800">${jobTitle}</p>
+            <p class="text-xs text-gray-500">${companyName}</p>
+            <p class="text-xs text-gray-400">${dateApplied}</p>
+          </div>
+        `;
+      }
+      newRow.appendChild(td);
+    });
+
+    jobTableBody.appendChild(newRow);
+
+    modal.classList.add("hidden");
+    jobForm.reset();
+  };
+
+  searchInput.addEventListener("input", function () {
+    const filter = this.value.toLowerCase();
+    const rows = jobTableBody.getElementsByTagName("tr");
+
+    for (let row of rows) {
+      let text = row.innerText.toLowerCase();
+      row.style.display = text.includes(filter) ? "" : "none";
     }
   });
-
-  if (!placed) {
-    alert("No space available in this column. Please add more rows.");
-  }
-  modal.style.display = "none";
-  this.reset();
-});
 </script>
 {% endblock %}
