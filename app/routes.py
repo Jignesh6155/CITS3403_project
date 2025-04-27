@@ -1,13 +1,24 @@
-from flask import render_template, request
+from flask import render_template, request, redirect, url_for, session
 from app import app
+
+app.secret_key = "your_secret_key"  # Required for session handling
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+@app.route("/signup", methods=["POST"])
+def signup():
+    name = request.form.get("name")
+    if name:
+        session["name"] = name  # Store the name in the session
+        return redirect(url_for("dashboard"))
+    return render_template("index.html", error="Name is required")
+
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html", active_page="dashboard")
+    name = session.get("name", "User")  # Default to "User" if no name in session
+    return render_template("dashboard.html", active_page="dashboard", name=name)
 
 @app.route("/resume-analysis")
 def resume_analysis():
@@ -31,3 +42,8 @@ def upload():
 @app.route("/job-tracker")
 def job_tracker():
     return render_template("jobtracker.html", active_page="job-tracker")
+
+@app.route("/logout")
+def logout():
+    session.clear()  # Clear the session
+    return redirect(url_for("home"))  # Redirect to the sign-up page

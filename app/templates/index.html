@@ -27,12 +27,15 @@
     <div id="right-panel"
          class="w-1/2 flex flex-col justify-center items-center p-10">
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Create Account</h2>
-      <input type="text" placeholder="Name" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-      <input type="email" placeholder="Email address" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-      <input type="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-      <button class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
-        SIGN UP
-      </button>
+      <form action="{{ url_for('signup') }}" method="POST" class="w-full">
+    <input type="text" name="name" placeholder="Name" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+    <input type="email" name="email" placeholder="Email address" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+    <input type="password" name="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
+      SIGN UP
+    </button>
+  </form>
+
     </div>
 
     <!-- Sliding login form -->
