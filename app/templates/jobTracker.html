@@ -5,33 +5,29 @@
 
 {% block content %}
 <div class="flex-1 flex flex-col">
-  <!-- HEADER + BUTTON -->
+  <!-- HEADER + ADD APPLICATION BUTTON -->
   <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
     <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-    <button id="addBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+    <button id="myBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
       + Add Application
     </button>
   </header>
 
-  <!-- CONTENT AREA -->
+  <!-- SEARCH BAR + FILTERS -->
   <main class="flex-1 p-6 overflow-y-auto">
     <div class="overflow-x-auto space-y-6">
-
-      <!-- FILTER & SEARCH BAR -->
+      
+      <!-- Search bar -->
       <div class="flex flex-wrap items-center gap-4 mb-6">
         <div class="flex items-center border rounded-full px-4 py-2 w-full md:w-1/2 bg-white">
           <i data-lucide="search" class="w-4 h-4 text-gray-400 mr-2"></i>
-          <input 
-            type="text" 
-            placeholder="Search for roles or companies" 
-            class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400"
-          />
+          <input type="text" placeholder="Search for roles or companies" class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400">
         </div>
 
         <div class="flex items-center gap-2">
-          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white" placeholder="Applied from">
+          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
           <span class="text-gray-400">→</span>
-          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white" placeholder="Applied until">
+          <input type="date" class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
         </div>
 
         <select class="border rounded-md px-3 py-2 text-sm text-gray-700 bg-white">
@@ -55,9 +51,9 @@
         </select>
       </div>
 
-      <!-- SCROLLABLE TABLE WITH ADD ROW BUTTON -->
+      <!-- TABLE -->
       <div class="border border-gray-300 rounded-lg overflow-hidden">
-        <div class="overflow-y-auto" style="max-height: 500px;">
+        <div class="overflow-x-auto" style="max-height: 500px;">
           <table id="jobTable" class="table-fixed w-full border-collapse">
             <thead class="bg-indigo-100 text-indigo-800">
               <tr>
@@ -71,7 +67,7 @@
                 <th class="border border-gray-300 p-2">Discontinued</th>
               </tr>
             </thead>
-            <tbody class="text-center" id="tableBody">
+            <tbody id="tableBody" class="text-center">
               {% for i in range(10) %}
               <tr>
                 {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
@@ -82,159 +78,128 @@
             </tbody>
           </table>
         </div>
-        <div class="bg-gray-100 p-3 flex justify-center">
-          <button id="addRowBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-            + Add Row
-          </button>
-        </div>
       </div>
-
-      <!-- ORIGINAL DRAGGABLE COLUMNS BELOW -->
-      <div id="columns" class="flex gap-4 min-w-max mt-6"></div>
 
     </div>
   </main>
 
-  <!-- MODAL -->
-  <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-none shadow-lg p-8 w-full max-w-3xl">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-semibold text-indigo-900">Add New Job</h2>
-        <button id="closeModal" class="text-gray-600 hover:text-red-500 text-2xl">&times;</button>
-      </div>
-      <form id="jobForm" class="grid grid-cols-2 gap-6">
-        <!-- FORM FIELDS -->
-        <div class="flex flex-col">
-          <label for="title" class="text-gray-700 mb-2 text-sm font-medium">Position Title *</label>
-          <input id="title" class="input-style" required placeholder="Software Engineer"/>
-        </div>
-        <div class="flex flex-col">
-          <label for="company" class="text-gray-700 mb-2 text-sm font-medium">Company *</label>
-          <input id="company" class="input-style" required placeholder="Google"/>
-        </div>
-        <div class="flex flex-col">
-          <label for="location" class="text-gray-700 mb-2 text-sm font-medium">Location *</label>
-          <input id="location" class="input-style" required placeholder="Sydney"/>
-        </div>
-        <div class="flex flex-col">
-          <label for="jobType" class="text-gray-700 mb-2 text-sm font-medium">Job Type *</label>
-          <select id="jobType" class="input-style" required>
-            <option>Internship</option>
-            <option>Graduate Role</option>
-            <option>Full-Time</option>
-            <option>Part-Time</option>
-          </select>
-        </div>
-        <div class="flex flex-col">
-          <label for="status" class="text-gray-700 mb-2 text-sm font-medium">Job Status *</label>
-          <select id="status" class="input-style" required>
-            <option>Saved</option>
-            <option>Applied</option>
-            <option>Screen</option>
-            <option>Interviewing</option>
-            <option>Offer</option>
-            <option>Accepted</option>
-            <option>Archived</option>
-            <option>Discontinued</option>
-          </select>
-        </div>
-        <div class="flex flex-col">
-          <label for="resume" class="text-gray-700 mb-2 text-sm font-medium">Resume Uploaded</label>
-          <select id="resume" class="input-style">
-            <option>Default Resume</option>
-            <option>Resume 1</option>
-            <option>Resume 2</option>
-          </select>
-        </div>
-
-        <!-- ACTIONS -->
-        <div class="col-span-2 flex justify-end space-x-4 mt-6">
-          <button type="button" id="cancelBtn" class="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-none">
-            Cancel
-          </button>
-          <button type="submit" class="px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-none">
-            Add
-          </button>
-        </div>
+  <!-- THE POPUP MODAL -->
+  <div id="myModal" class="modal">
+    <div class="modal-content p-8 rounded-lg shadow-lg bg-white w-full max-w-md mx-auto">
+      <span class="close">&times;</span>
+      <h2 class="text-xl font-semibold mb-4 text-indigo-900 text-center">Add Application</h2>
+      <form id="applicationForm" class="flex flex-col gap-4">
+        <input id="companyName" type="text" placeholder="Company Name" required class="border rounded-md p-2 text-gray-700">
+        <input id="jobTitle" type="text" placeholder="Job Title" required class="border rounded-md p-2 text-gray-700">
+        <input id="dateApplied" type="date" required class="border rounded-md p-2 text-gray-700">
+        <select id="statusSelect" required class="border rounded-md p-2 text-gray-700">
+          <option value="">Select Status</option>
+          <option>Saved</option>
+          <option>Applied</option>
+          <option>Screen</option>
+          <option>Interviewing</option>
+          <option>Offer</option>
+          <option>Accepted</option>
+          <option>Archived</option>
+          <option>Discontinued</option>
+        </select>
+        <button type="submit" class="mt-4 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md">
+          Add
+        </button>
       </form>
     </div>
   </div>
 </div>
+
+<!-- POPUP CSS -->
+<style>
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+  position: relative;
+  animation-name: animatetop;
+  animation-duration: 0.4s
+}
+@keyframes animatetop {
+  from {top: -300px; opacity: 0}
+  to {top: 0; opacity: 1}
+}
+.close {
+  color: black;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.close:hover, .close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const columns = ["Saved","Applied","Screen","Interviewing","Offer","Accepted","Archived","Discontinued"];
-  let jobs = [];
+// Popup open/close
+var modal = document.getElementById("myModal");
+var btn = document.getElementById("myBtn");
+var span = document.getElementsByClassName("close")[0];
 
-  function renderColumns() {
-    $("#columns").empty();
-    columns.forEach(col => {
-      $("#columns").append(`
-        <div class="w-64 bg-white border p-4 rounded shadow-sm"
-             ondragover="event.preventDefault()"
-             ondrop="onDrop(event,'${col}')">
-          <h2 class="font-semibold mb-2">${col}</h2>
-          <div id="${col}-list" class="space-y-2"></div>
-        </div>`);
-    });
-    renderJobs();
-  }
+btn.onclick = function() { modal.style.display = "block"; }
+span.onclick = function() { modal.style.display = "none"; }
+window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
 
-  function renderJobs() {
-    columns.forEach(c => $(`#${c}-list`).empty());
-    jobs.forEach((job,i) => {
-      $(`#${job.status}-list`).append(`
-        <div class="bg-white border p-3 rounded shadow cursor-move"
-             draggable="true"
-             ondragstart="onDragStart(event,${i})">
-          <p class="font-medium">${job.title}</p>
-          <p class="text-sm text-gray-600">${job.company}</p>
-          <p class="text-sm text-gray-400">${job.location}</p>
-        </div>`);
-    });
-  }
+// Add job to table
+document.getElementById("applicationForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  var company = document.getElementById("companyName").value;
+  var job = document.getElementById("jobTitle").value;
+  var date = document.getElementById("dateApplied").value;
+  var status = document.getElementById("statusSelect").value;
 
-  function onDragStart(e,i){ e.originalEvent.dataTransfer.setData("jobIndex",i); }
-  function onDrop(e,col){
-    const idx = e.dataTransfer.getData("jobIndex");
-    jobs[idx].status = col;
-    renderJobs();
-  }
+  var colIndex = {
+    "Saved": 0,
+    "Applied": 1,
+    "Screen": 2,
+    "Interviewing": 3,
+    "Offer": 4,
+    "Accepted": 5,
+    "Archived": 6,
+    "Discontinued": 7
+  }[status];
 
-  function addRow() {
-    const tableBody = document.getElementById('tableBody');
-    const newRow = document.createElement('tr');
-    for (let i = 0; i < columns.length; i++) {
-      const td = document.createElement('td');
-      td.className = "border border-gray-300 p-6";
-      newRow.appendChild(td);
+  if (colIndex === undefined) return;
+
+  let placed = false;
+  $("#tableBody tr").each(function() {
+    const cell = $(this).find("td").eq(colIndex);
+    if (cell.html().trim() === "") {
+      cell.html(`
+        <div class="flex flex-col items-center justify-center">
+          <div class="font-bold text-gray-700">${job}</div>
+          <div class="text-sm text-gray-500">${company}</div>
+          <div class="text-xs text-gray-400">${date}</div>
+        </div>
+      `);
+      placed = true;
+      return false; // Break loop
     }
-    tableBody.appendChild(newRow);
-  }
-
-  $(function(){
-    renderColumns();
-    $("#addBtn").click(()=>$("#modal").removeClass("hidden").addClass("flex"));
-    $("#closeModal,#cancelBtn").click(()=>$("#modal").addClass("hidden"));
-    $("#jobForm").submit(e=>{
-      e.preventDefault();
-      jobs.push({
-        title:$("#title").val(),
-        company:$("#company").val(),
-        location:$("#location").val(),
-        jobType:$("#jobType").val(),
-        status:$("#status").val(),
-        resume:$("#resume").val()
-      });
-      renderJobs();
-      $("#modal").addClass("hidden");
-      e.target.reset();
-    });
-
-    $("#addRowBtn").click(() => {
-      addRow();
-    });
   });
+
+  if (!placed) {
+    alert("No space available in this column. Please add more rows.");
+  }
+  modal.style.display = "none";
+  this.reset();
+});
 </script>
 {% endblock %}
