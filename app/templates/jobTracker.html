@@ -98,6 +98,14 @@ function onDrop(event, columnId) {
   document.getElementById(columnId).appendChild(jobBox);
 }
 
+// DELETE JOB
+function deleteJob(id) {
+  const job = document.getElementById(id);
+  if (job) {
+    job.remove();
+  }
+}
+
 // SUBMIT FORM
 document.getElementById('applicationForm').onsubmit = function(e) {
   e.preventDefault();
@@ -112,9 +120,10 @@ document.getElementById('applicationForm').onsubmit = function(e) {
   div.id = newId;
   div.setAttribute('draggable', 'true');
   div.setAttribute('ondragstart', 'onDragStart(event)');
-  div.className = "bg-indigo-50 p-4 rounded-lg shadow mb-2 cursor-move";
+  div.className = "bg-indigo-50 p-4 rounded-lg shadow mb-2 relative cursor-move";
 
   div.innerHTML = `
+    <button onclick="deleteJob('${newId}')" class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
     <p class="font-semibold text-indigo-800">${company}</p>
     <p class="text-gray-600">${title}</p>
     <p class="text-gray-400 text-sm">${date}</p>
