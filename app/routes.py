@@ -9,9 +9,9 @@ def home():
 def dashboard():
     return render_template("dashboard.html", active_page="dashboard")
 
-@app.route("/resume-analysis")
-def resume_analysis():
-    return render_template("resume.html", active_page="resume-analysis")
+@app.route("/job-search")
+def job_search():
+    return render_template("jobSearch.html", active_page="job-search")
 
 @app.route("/analytics")
 def analytics():
@@ -25,8 +25,8 @@ def comms():
 def upload():
     f = request.files.get("resume")
     if f:
-        return render_template("resume.html", uploaded=True, filename=f.filename, active_page="resume-analysis")
-    return render_template("resume.html", uploaded=False, active_page="resume-analysis")
+        return render_template("jobSearch.html", uploaded=True, filename=f.filename, active_page="job-search")
+    return render_template("jobSearch.html", uploaded=False, active_page="job-search")
 
 @app.route("/job-tracker")
 def job_tracker():

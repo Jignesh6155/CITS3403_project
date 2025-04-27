@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% set active_page = "job-search" %}
+
+{% block title %}Job Search{% endblock %}
+
+{% block content %}
+<header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
+  <h1 class="text-xl font-semibold text-indigo-900">Career Explorer</h1>
+  <div class="flex gap-4 items-center">
+    <i data-lucide="bell" class="w-5 h-5 text-gray-500"></i>
+    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+  </div>
+</header>
+
+<div class="flex-1 overflow-auto">
+  <main class="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 p-6">
+    <!-- Job Search with Filters -->
+    <section class="bg-white border border-gray-200 p-6 shadow rounded-lg xl:col-span-2">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Search Jobs</h2>
+      <div class="flex gap-2 items-center mb-4">
+        <input type="text" placeholder="Search for roles, companies, or locations" class="w-full px-4 py-2 border rounded-md">
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Search</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-3 mb-6">
+        <select class="border rounded-md px-3 py-2">
+          <option>Location</option>
+          <option>Sydney, NSW</option>
+          <option>Perth, WA</option>
+          <option>Remote</option>
+        </select>
+        <select class="border rounded-md px-3 py-2">
+          <option>Opportunity Type</option>
+          <option>Internship</option>
+          <option>Graduate</option>
+          <option>Scholarship</option>
+        </select>
+        <select class="border rounded-md px-3 py-2">
+          <option>Category</option>
+          <option>Sales & Account Management</option>
+          <option>Engineering</option>
+          <option>Healthcare</option>
+          <option>Marketing</option>
+          <option>Finance</option>
+          <option>Legal</option>
+          <option>Customer Service</option>
+          <option>Administration</option>
+          <option>Creative</option>
+          <option>Education</option>
+          <option>Construction</option>
+          <option>Hospitality</option>
+          <option>Retail</option>
+          <option>Information Technology</option>
+          <option>Manufacturing</option>
+        </select>
+      </div>
+
+      <!-- Job Results -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Job Results:</h3>
+        <ul class="space-y-4 text-sm">
+          <li class="bg-indigo-50 p-4 rounded-md">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Account Development Representative @ Snorkel AI</span>
+              <span class="text-green-600 font-semibold">$80k - $110k/yr</span>
+            </div>
+            <div class="text-gray-600 text-xs mt-1">New York, NY • Full-Time • Entry-Level</div>
+            <p class="text-gray-700 mt-2">Work on qualifying and scheduling meetings from inbound leads, using Salesforce and Marketo.</p>
+          </li>
+          <li class="bg-indigo-50 p-4 rounded-md">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Registered Nurse - Oral Surgery @ Geisinger</span>
+              <span class="text-green-600 font-semibold">$65k - $85k/yr</span>
+            </div>
+            <div class="text-gray-600 text-xs mt-1">Danville, PA • Full-Time • Mid-Level</div>
+            <p class="text-gray-700 mt-2">Provide direct patient care in oral surgery and coordinate with multidisciplinary healthcare teams.</p>
+          </li>
+          <li class="bg-indigo-50 p-4 rounded-md">
+            <div class="flex justify-between items-center">
+              <span class="font-semibold">Inbound Operations Team Leader @ Target</span>
+              <span class="text-green-600 font-semibold">$25 - $42.50/hr</span>
+            </div>
+            <div class="text-gray-600 text-xs mt-1">San Diego, CA • Full-Time • Entry-Level</div>
+            <p class="text-gray-700 mt-2">Lead operational and staffing tasks, ensuring effective warehouse and inventory management.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Resume Upload and Analysis -->
+    <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Search with Resume</h2>
+      <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-gray-50 hover:border-indigo-400 transition">
+          <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-400 mb-3"></i>
+          <p class="text-sm text-gray-600 font-medium">Click to upload or drag and drop</p>
+          <p class="text-xs text-gray-400 mt-1">PDF, DOCX (Max 25MB)</p>
+          <input type="file" name="resume" class="hidden" />
+        </div>
+        <button type="submit" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded">Analyse</button>
+      </form>
+
+      <!-- Keywords -->
+      <div class="mt-6">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Keywords Found:</h3>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Python</span>
+          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Machine Learning</span>
+          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Data Analysis</span>
+          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Leadership</span>
+          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Communication</span>
+        </div>
+      </div>
+
+      <!-- Suggested Jobs -->
+      <div class="mt-6">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Suggested Jobs:</h3>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center gap-2 bg-indigo-50 p-3 rounded-md">
+            <i data-lucide="briefcase" class="w-5 h-5 text-indigo-600"></i>
+            <span>Frontend Developer @ Placeholder Inc.</span>
+          </li>
+          <li class="flex items-center gap-2 bg-indigo-50 p-3 rounded-md">
+            <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
+            <span>Data Analyst @ ExampleCorp</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

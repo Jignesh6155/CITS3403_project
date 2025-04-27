@@ -22,9 +22,9 @@
           <i data-lucide="layout-dashboard" class="w-6 h-6 {% if active_page=='dashboard'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block">Dashboard</span>
         </a>
-        <a href="{{ url_for('resume_analysis') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='resume-analysis'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('job_search') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='resume-analysis'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="file-text" class="w-6 h-6 {% if active_page=='resume-analysis'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
-          <span class="hidden group-hover:inline-block">Resume Analysis</span>
+          <span class="hidden group-hover:inline-block">Job Search</span>
         </a>
         <a href="{{ url_for('job_tracker') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='job-tracker'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="check-circle" class="w-6 h-6 {% if active_page=='job-tracker'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
