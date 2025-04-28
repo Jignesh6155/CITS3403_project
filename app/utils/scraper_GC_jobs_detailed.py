@@ -12,7 +12,6 @@ def build_url(jobtype: str, discipline: str | None = None, location: str | None 
     if keyword:
         url += f"?title={keyword}"
     return url
-
 def add_page_param(base: str, page_no: int) -> str:
     joiner = "&" if "?" in base else "?"
     return f"{base}{joiner}page={page_no}"
@@ -202,6 +201,32 @@ def get_jobs_full(jobtype:   str,
     finally:
         driver.quit()
 
+def save_jobs_to_db(jobs, user_id, source="GradConnection"):
+    from app.models import db, ScrapedJob
+    import json
+    # Delete existing scraped jobs for this user and source
+    ScrapedJob.query.filter_by(user_id=user_id, source=source).delete()
+    db.session.commit()
+    for job in jobs:
+        scraped_job = ScrapedJob(
+            user_id=user_id,
+            title=job.get("title"),
+            posted_date=job.get("posted_date"),
+            closing_in=job.get("closing_in"),
+            ai_summary=job.get("ai_summary"),
+            overview=json.dumps(job.get("overview", [])),
+            responsibilities=json.dumps(job.get("responsibilities", [])),
+            requirements=json.dumps(job.get("requirements", [])),
+            skills_and_qualities=json.dumps(job.get("skills_and_qualities", [])),
+            salary_info=json.dumps(job.get("salary_info", [])),
+            about_company=json.dumps(job.get("about_company", [])),
+            full_text=job.get("full_text"),
+            link=job.get("link"),
+            source=source
+        )
+        db.session.add(scraped_job)
+    db.session.commit()
+
 # ───────────────────────────── CLI example ────────────────────────────────────
 if __name__ == "__main__":
     results = get_jobs_full(
@@ -209,8 +234,8 @@ if __name__ == "__main__":
         discipline="engineering-software",
         location="perth",
         keyword=None,
-        max_pages=2,
-        headless=False
+        max_pages=1,
+        headless=True # False shows browser window while scraping
     )
 
     print(f"\nFound {len(results)} full jobs")
