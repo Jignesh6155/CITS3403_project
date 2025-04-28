@@ -6,13 +6,23 @@
   <title>CareerLink — Sign In / Sign Up</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  <script defer>
+    function showLogin() {
+      document.getElementById('login-form').classList.remove('translate-x-full');
+      document.getElementById('login-form').classList.add('translate-x-0');
+    }
+    function hideLogin() {
+      document.getElementById('login-form').classList.remove('translate-x-0');
+      document.getElementById('login-form').classList.add('translate-x-full');
+    }
+  </script>
 </head>
+
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
 
   <div class="relative w-[800px] h-[500px] bg-white shadow-sm flex overflow-hidden">
-    
-    <!-- Left panel (Sign in) -->
+
+    <!-- Left panel (Sign in prompt) -->
     <div id="left-panel"
          class="w-1/2 bg-indigo-100 text-indigo-900 flex flex-col items-center justify-center p-10">
       <h2 class="text-3xl font-semibold mb-4">Welcome Back!</h2>
@@ -23,33 +33,38 @@
       </button>
     </div>
 
-    <!-- Right panel (Sign up) -->
+    <!-- Right panel (Sign Up Form) -->
     <div id="right-panel"
          class="w-1/2 flex flex-col justify-center items-center p-10">
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Create Account</h2>
-      <form action="{{ url_for('signup') }}" method="POST" class="w-full">
-    <input type="text" name="name" placeholder="Name" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
-    <input type="email" name="email" placeholder="Email address" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
-    <input type="password" name="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
-    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
-      SIGN UP
-    </button>
-  </form>
-
+      <form action="{{ url_for('signup') }}" method="POST" class="w-full flex flex-col gap-4">
+        <input type="text" name="name" placeholder="Name" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="email" name="email" placeholder="Email address" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
+          SIGN UP
+        </button>
+      </form>
     </div>
 
-    <!-- Sliding login form -->
+    <!-- Sliding login form (Sign In Form) -->
     <div id="login-form"
          class="absolute top-0 left-1/2 w-1/2 h-full bg-white p-10 flex flex-col justify-center items-center transform transition-all duration-500 translate-x-full">
+      
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Sign In</h2>
-      <input type="email" placeholder="Email" class="w-full mb-4 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-      <input type="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-      <button class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
-        LOGIN
-      </button>
+      
+      <form action="{{ url_for('signin') }}" method="POST" class="w-full flex flex-col gap-4">
+        <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
+          LOGIN
+        </button>
+      </form>
+
       <button onclick="hideLogin()" class="mt-4 text-sm text-indigo-600 hover:underline">
         ← Back to Sign Up
       </button>
+
     </div>
 
   </div>
