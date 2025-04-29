@@ -10,20 +10,21 @@ import queue
 import time
 from app.utils.fuzzy_search import job_matches
 
-# Global queue for live jobs (in production, use something more robust)
+# Global variables (for testing)
 live_job_queue = queue.Queue()
-HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
+HEADLESS_TOGGLE = True  # Set to False temporarily for debugging
+SCRAPE_SIZE = 1
 
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-    with app.app_context():  # Ensure thread has access to app context
+    with app.app_context():
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
         from app.models import db, ScrapedJob
         import json
         
         try:
             print(f"[DEBUG] Calling get_jobs_full with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-            jobs = get_jobs_full(jobtype=jobtype, discipline=discipline, location=location, keyword=keyword, max_pages=2, headless=HEADLESS_TOGGLE)
+            jobs = get_jobs_full(jobtype=jobtype, discipline=discipline, location=location, keyword=keyword, max_pages=SCRAPE_SIZE, headless=HEADLESS_TOGGLE)
             print(f"[DEBUG] Successfully scraped {len(jobs)} jobs")
         except Exception as e:
             print(f"[ERROR] Error scraping jobs: {e}")
@@ -72,9 +73,13 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                 import traceback
                 traceback.print_exc()
             
-            time.sleep(0.1)  # Throttle for demo
-        
-        print(f"[DEBUG] Completed scraping process. Saved {len(jobs)} jobs.")
+            time.sleep(0.1)
+            
+        # Send completion message to notify frontend that scraping is complete
+        live_job_queue.put({
+            'status': 'complete'
+        })
+        print(f"[DEBUG] Scraping complete, sent completion message to queue")
 
 @app.route("/")
 def home():
@@ -214,7 +219,17 @@ def api_start_scraping():
 def api_scraping_stream():
     def event_stream():
         while True:
-            job = live_job_queue.get()
-            yield f"data: {json.dumps(job)}\n\n"
+            try:
+                # Use a 30-second timeout to prevent the connection from blocking forever
+                job = live_job_queue.get(timeout=30)
+                yield f"data: {json.dumps(job)}\n\n"
+                
+                # If this was the completion message, we're done
+                if job.get('status') == 'complete':
+                    break
+            except queue.Empty:
+                # Send a ping event every 30 seconds to keep the connection alive
+                yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+                
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
 

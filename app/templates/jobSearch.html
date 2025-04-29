@@ -20,39 +20,116 @@
       <div class="flex gap-2 items-center mb-4">
         <input type="text" placeholder="Search for roles, companies, or locations" class="w-full px-4 py-2 border rounded-md">
         <button id="start-scraping-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Search</button>
+        <div id="scraping-loader" class="hidden ml-2">
+          <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
       </div>
 
       <!-- Filters -->
       <div class="flex flex-wrap gap-3 mb-6">
         <select class="border rounded-md px-3 py-2">
           <option>Location</option>
-          <option>Sydney</option>
           <option>Perth</option>
+          <option>Sydney</option>
+          <option>Melbourne</option>
           <option>Remote</option>
+          <option>Hong-Kong</option>
         </select>
         <select class="border rounded-md px-3 py-2">
           <option>Opportunity Type</option>
           <option>Internships</option>
           <option>Graduate-Jobs</option>
-          <option>Scholarship</option>
+          <option>scholarships</option>
+          <option>clerkships</option>
         </select>
         <select class="border rounded-md px-3 py-2">
           <option>Category</option>
-          <option>Accounting</option>
-          <option>Engineering</option>
-          <option>Healthcare</option>
-          <option>Marketing</option>
-          <option>Finance</option>
-          <option>Legal</option>
-          <option>Customer Service</option>
-          <option>Administration</option>
-          <option>Creative</option>
-          <option>Education</option>
-          <option>Construction</option>
-          <option>Hospitality</option>
-          <option>Retail</option>
-          <option>Information Technology</option>
-          <option>Manufacturing</option>
+          <option>accounting</option>
+          <option>actuarial-studies</option>
+          <option>administration</option>
+          <option>agriculture</option>
+          <option>architecture</option>
+          <option>arts-and-humanities</option>
+          <option>aviation</option>
+          <option>banking-and-finance</option>
+          <option>business-and-commerce</option>
+          <option>communications</option>
+          <option>compliance</option>
+          <option>computer-science</option>
+          <option>construction</option>
+          <option>consulting</option>
+          <option>customer-service</option>
+          <option>cyber-security</option>
+          <option>data-science-and-analytics</option>
+          <option>defence</option>
+          <option>design-and-user-experience</option>
+          <option>economics</option>
+          <option>education</option>
+          <option>engineering</option>
+          <option>engineering-aerospace-aeronautical</option>
+          <option>engineering-chemical-processing</option>
+          <option>engineering-civil-structural</option>
+          <option>engineering-electrical</option>
+          <option>engineering-environmental</option>
+          <option>engineering-geotechnical</option>
+          <option>engineering-mechanical</option>
+          <option>engineering-mechatronics</option>
+          <option>engineering-mining</option>
+          <option>engineering-petroleum</option>
+          <option>engineering-software</option>
+          <option>environment</option>
+          <option>exercise-physiology</option>
+          <option>fast-moving-consumer-goods</option>
+          <option>food-technology</option>
+          <option>funds-management</option>
+          <option>geology</option>
+          <option>government</option>
+          <option>health</option>
+          <option>health-policy-and-administration</option>
+          <option>horticulture</option>
+          <option>hospitality-sports-and-tourism</option>
+          <option>human-resources</option>
+          <option>industrial-design</option>
+          <option>information-systems</option>
+          <option>information-technology</option>
+          <option>insurance</option>
+          <option>intelligence</option>
+          <option>investment-banking</option>
+          <option>journalism</option>
+          <option>law</option>
+          <option>logistics-and-supply-chain</option>
+          <option>management</option>
+          <option>marine-biology</option>
+          <option>marketing-and-sales</option>
+          <option>mathematics</option>
+          <option>media-and-advertising</option>
+          <option>medical-and-biomedical-science</option>
+          <option>medicine</option>
+          <option>mining-oil-and-gas</option>
+          <option>nursing-and-midwifery</option>
+          <option>operations</option>
+          <option>pharmacy-and-pharmacology</option>
+          <option>physics</option>
+          <option>pphysio-and-occupational-therapy</option>
+          <option>planning-and-surveying</option>
+          <option>procurement</option>
+          <option>project-management</option>
+          <option>property</option>
+          <option>psychology-and-counselling</option>
+          <option>radiography-and-medical-imaging</option>
+          <option>recruitment</option>
+          <option>research-and-development</option>
+          <option>retail</option>
+          <option>science</option>
+          <option>speech-pathology</option>
+          <option>statistics</option>
+          <option>telecommunications</option>
+          <option>transport</option>
+          <option>utilities</option>
+
         </select>
       </div>
 
@@ -121,10 +198,12 @@ const PAGE_SIZE = 10;
 let currentPage = 1;
 let hasMore = true;
 let jobs = [];
+let isScrapingActive = false;
 
 // Get UI elements
 const searchInput = document.querySelector('input[placeholder="Search for roles, companies, or locations"]');
 const searchButton = document.getElementById('start-scraping-btn');
+const scrapingLoader = document.getElementById('scraping-loader');
 const locationSelect = document.querySelectorAll('select')[0];
 const typeSelect = document.querySelectorAll('select')[1];
 const categorySelect = document.querySelectorAll('select')[2];
@@ -218,6 +297,10 @@ searchButton.addEventListener('click', function(e) {
   const location = getFilterValue(locationSelect, 'Location').toLowerCase() || undefined;
   const keyword = searchInput.value.trim();
   
+  // Show loader
+  scrapingLoader.classList.remove('hidden');
+  isScrapingActive = true;
+  
   // Debug logging for frontend values
   console.log('Selected values:', { jobtype, discipline, location, keyword });
   
@@ -257,11 +340,37 @@ if (!!window.EventSource) {
   };
   sse.onerror = function(e) {
     console.error('SSE error:', e);
+    // Hide loader on error
+    if (isScrapingActive) {
+      scrapingLoader.classList.add('hidden');
+      isScrapingActive = false;
+    }
   };
   sse.onmessage = function(event) {
     console.log('SSE job received:', event.data);
-    const job = JSON.parse(event.data);
-    addJobLive(job);
+    try {
+      const data = JSON.parse(event.data);
+      
+      // Check if this is a ping or control message
+      if (data.type === 'ping') {
+        console.log('Received ping from server');
+        return;
+      }
+      
+      // Check if this is a control message for scraping status
+      if (data.status === 'complete') {
+        console.log('Scraping complete, hiding loader');
+        // Hide loader when scraping is complete
+        scrapingLoader.classList.add('hidden');
+        isScrapingActive = false;
+        return;
+      }
+      
+      // Otherwise treat as a job
+      addJobLive(data);
+    } catch (err) {
+      console.error('Error parsing SSE data:', err);
+    }
   };
 }
 
