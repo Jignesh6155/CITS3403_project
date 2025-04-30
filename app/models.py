@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+import datetime
 
 db = SQLAlchemy()
 
@@ -54,3 +55,13 @@ class ScrapedJob(db.Model):
     full_text = db.Column(db.Text)
     link = db.Column(db.String(512))
     source = db.Column(db.String(120))
+
+class ResumeAnalysis(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    filename = db.Column(db.String(255))
+    content_type = db.Column(db.String(100))
+    upload_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    raw_text = db.Column(db.Text)
+    keywords = db.Column(db.Text)  # JSON stringified list of extracted keywords
+    suggested_jobs = db.Column(db.Text)  # JSON stringified list of job IDs
