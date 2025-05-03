@@ -144,7 +144,11 @@ def analytics():
 
 @app.route("/comms")
 def comms():
-    return render_template("comms.html", active_page="comms")
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    
+    user = User.query.filter_by(name=session['name']).first()
+    return render_template("comms.html", active_page="comms", current_user=user)
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -232,4 +236,24 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+
+@app.route('/add-friend', methods=['POST'])
+def add_friend():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    
+    email = request.form.get('email')
+    if email:
+        friend = User.query.filter_by(email=email).first()
+        if friend:
+            user = User.query.filter_by(name=session['name']).first()
+            user.friends.append(friend)
+            db.session.commit()
+            return redirect(url_for('comms'))
+        else:
+            flash('User not found', 'error')
+    else:
+        flash('Please enter an email', 'error')
+    
+    return redirect(url_for('comms'))
 
