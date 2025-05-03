@@ -1,7 +1,7 @@
 import json
 import difflib
 
-def job_matches(job, search='', location='', job_type='', category=''):
+def job_matches(job, search='', location='', job_type='', category='', confidence=0.5):
     title = (job.title or '').lower()
     company = ''
     ai_summary = (job.ai_summary or '').lower()
@@ -30,16 +30,16 @@ def job_matches(job, search='', location='', job_type='', category=''):
     search_match = True
     if search:
         search_match = (
-            difflib.SequenceMatcher(None, search, title).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, company).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, ai_summary).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, overview).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, responsibilities).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, requirements).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, skills_and_qualities).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, salary_info).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, about_company).ratio() > 0.5 or
-            difflib.SequenceMatcher(None, search, full_text).ratio() > 0.5 or
+            difflib.SequenceMatcher(None, search, title).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, company).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, ai_summary).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, overview).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, responsibilities).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, requirements).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, skills_and_qualities).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, salary_info).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, about_company).ratio() > confidence or
+            difflib.SequenceMatcher(None, search, full_text).ratio() > confidence or
             search in title or search in company or search in ai_summary or search in overview or
             search in responsibilities or search in requirements or search in skills_and_qualities or
             search in salary_info or search in about_company or search in full_text

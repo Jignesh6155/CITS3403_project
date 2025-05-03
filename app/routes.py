@@ -9,6 +9,7 @@ import threading
 import queue
 import time
 from app.utils.fuzzy_search import job_matches
+from app.utils import resume_processor
 
 # Global variables (for testing)
 live_job_queue = queue.Queue()
@@ -136,7 +137,9 @@ def job_search():
         except Exception:
             job.about_company_parsed = None
         job.company = job.about_company_parsed[0] if job.about_company_parsed and len(job.about_company_parsed) > 0 else ""
-    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs)
+    resume_keywords = session.pop('resume_keywords', [])
+    suggested_jobs = session.pop('suggested_jobs', [])
+    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
 
 @app.route("/analytics")
 def analytics():
@@ -153,9 +156,46 @@ def comms():
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
-    if f:
-        return render_template("jobSearch.html", uploaded=True, filename=f.filename, active_page="job-search")
-    return render_template("jobSearch.html", uploaded=False, active_page="job-search")
+    if f and f.filename:
+        print("[DEBUG] Processing uploaded resume with AI")
+        filename = f.filename
+        content_type = f.content_type or f.mimetype or ''
+        file_bytes = f.read()
+        text = resume_processor.extract_text(file_bytes, content_type)
+        # Get AI-suggested job titles (keywords)
+        job_titles = resume_processor.extract_keywords_openai(text)
+        print("[DEBUG] Extracted keywords:", job_titles)
+        # Find up to 5 jobs that fuzzy match any keyword
+        from app.models import ScrapedJob
+        import json
+        all_jobs = ScrapedJob.query.all()
+        print("[DEBUG] Number of jobs in DB:", len(all_jobs))
+        suggestions = []
+        for job in all_jobs:
+            for keyword in job_titles:
+                if job_matches(job, search=keyword, location='', job_type='', category='', confidence=0.35):
+                    print("[DEBUG] Found job that matches keyword:", job.title)
+                    try:
+                        about = json.loads(job.about_company) if job.about_company else []
+                    except Exception:
+                        about = []
+                    suggestions.append({
+                        'title': job.title,
+                        'company': about[0] if about else '',
+                        'posted_date': job.posted_date,
+                        'closing_in': job.closing_in,
+                        'link': job.link,
+                    })
+                    break  # Only add each job once
+            if len(suggestions) >= 5:
+                break
+        session['resume_keywords'] = job_titles
+        session['suggested_jobs'] = suggestions
+        return redirect(url_for('job_search'))
+    # If no file, clear session and redirect
+    session['resume_keywords'] = []
+    session['suggested_jobs'] = []
+    return redirect(url_for('job_search'))
 
 @app.route("/job-tracker")
 def job_tracker():
