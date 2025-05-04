@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
-from app.models import db, User
+from app.models import db, User, JobApplication
 from app.models import ScrapedJob
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
@@ -10,6 +10,7 @@ import queue
 import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
+import datetime
 
 # Global variables (for testing)
 live_job_queue = queue.Queue()
@@ -127,7 +128,6 @@ def logout():
     session.clear()
     return redirect(url_for("home"))
 
-
 @app.route("/job-search")
 def job_search():
     scraped_jobs = ScrapedJob.query.all()
@@ -196,10 +196,6 @@ def upload():
     session['resume_keywords'] = []
     session['suggested_jobs'] = []
     return redirect(url_for('job_search'))
-
-@app.route("/job-tracker")
-def job_tracker():
-    return render_template("jobtracker.html", active_page="job-tracker")
 
 @app.route("/api/scraped-jobs")
 def api_scraped_jobs():
@@ -296,4 +292,63 @@ def add_friend():
         flash('Please enter an email', 'error')
     
     return redirect(url_for('comms'))
+
+
+@app.route("/add-application", methods=["POST"])
+def add_application():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return redirect(url_for('home'))
+
+    company = request.form.get("company")
+    title = request.form.get("title")
+    date_applied = request.form.get("date_applied")
+    status = request.form.get("status")
+
+    application = JobApplication(
+        company=company,
+        title=title,
+        status=status,
+        date_applied=datetime.datetime.strptime(date_applied, "%Y-%m-%d"),
+        owner=user
+    )
+
+    db.session.add(application)
+    db.session.commit()
+
+    return redirect(url_for("job_tracker"))
+
+
+@app.route("/update-job-status", methods=["POST"])
+def update_job_status():
+    job_id = request.json.get("job_id")
+    new_status = request.json.get("new_status")
+
+    job = JobApplication.query.get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    job.status = new_status
+    db.session.commit()
+
+    return jsonify({"message": "Status updated"})
+
+@app.route("/job-tracker")
+def job_tracker():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+
+    user = User.query.filter_by(name=session['name']).first()
+    applications = JobApplication.query.filter_by(owner=user).all()
+
+    statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
+    grouped = {status: [] for status in statuses}
+    for app in applications:
+        grouped[app.status].append(app)
+
+    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)
+
 

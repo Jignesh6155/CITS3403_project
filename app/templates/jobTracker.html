@@ -45,7 +45,14 @@
         <tr>
           {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
           <td id="{{ column }}" ondragover="event.preventDefault()" ondrop="onDrop(event, '{{ column }}')" class="border h-40 align-top p-2">
-            <!-- Job entries will be dropped here -->
+            {% for job in grouped[column] %}
+              <div id="job-{{ job.id }}" draggable="true" ondragstart="onDragStart(event)" class="bg-indigo-50 p-4 rounded-lg shadow mb-2 relative cursor-move">
+                <button onclick="deleteJob('job-{{ job.id }}')" class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
+                <p class="font-semibold text-indigo-800">{{ job.company }}</p>
+                <p class="text-gray-600">{{ job.title }}</p>
+                <p class="text-gray-400 text-sm">{{ job.date_applied.strftime('%Y-%m-%d') }}</p>
+              </div>
+            {% endfor %}
           </td>
           {% endfor %}
         </tr>
@@ -58,11 +65,11 @@
     <div class="bg-white p-8 rounded-lg w-full max-w-md relative">
       <button id="closeModal" class="absolute top-4 right-6 text-gray-500 hover:text-black text-2xl">&times;</button>
       <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Add Application</h2>
-      <form id="applicationForm" class="flex flex-col gap-4">
-        <input id="companyName" type="text" placeholder="Company Name" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <input id="jobTitle" type="text" placeholder="Job Title" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <input id="dateApplied" type="date" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <select id="status" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
+      <form method="POST" action="{{ url_for('add_application') }}" class="flex flex-col gap-4">
+        <input id="companyName" name="company" type="text" placeholder="Company Name" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="jobTitle" name="title" type="text" placeholder="Job Title" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="dateApplied" name="date_applied" type="date" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <select id="status" name="status" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
           <option value="" disabled selected>Select Status</option>
           <option>Saved</option>
           <option>Applied</option>
@@ -98,7 +105,26 @@ function onDrop(event, columnId) {
   const id = event.dataTransfer.getData("text/plain");
   const jobBox = document.getElementById(id);
   document.getElementById(columnId).appendChild(jobBox);
+
+  // Persist the new status to the backend
+  const jobId = id.replace("job-", ""); // assumes job id is in DOM id (e.g., job-123)
+  
+  fetch("/update-job-status", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      job_id: jobId,
+      new_status: columnId,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.error("Failed to update job status.");
+    }
+  });
 }
+
 
 // DELETE JOB
 function deleteJob(id) {
