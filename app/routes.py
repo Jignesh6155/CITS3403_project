@@ -151,8 +151,75 @@ def comms():
         return redirect(url_for('home'))
     
     user = User.query.filter_by(name=session['name']).first()
-    return render_template("comms.html", active_page="comms", current_user=user)
-
+    
+    # Get application counts for user and friends
+    leaderboard_data = []
+    
+    # Add current user's data
+    user_apps_count = JobApplication.query.filter_by(owner_id=user.id).count()
+    leaderboard_data.append({
+        'name': user.name,
+        'apps_count': user_apps_count,
+        'is_current_user': True
+    })
+    
+    # Add friends' data
+    for friend in user.friends:
+        friend_apps_count = JobApplication.query.filter_by(owner_id=friend.id).count()
+        leaderboard_data.append({
+            'name': friend.name,
+            'apps_count': friend_apps_count,
+            'is_current_user': False
+        })
+    
+    # Sort by application count (descending)
+    leaderboard_data.sort(key=lambda x: x['apps_count'], reverse=True)
+    
+    # Add rank to each entry
+    for i, entry in enumerate(leaderboard_data):
+        entry['rank'] = i + 1
+    
+    # Get stats for the chart
+    chart_data = {
+        'labels': ['Apps Sent', 'Interviews', 'Offers'],
+        'datasets': []
+    }
+    
+    # Add current user's stats
+    user_stats = {
+        'Apps Sent': JobApplication.query.filter_by(owner_id=user.id).count(),
+        'Interviews': JobApplication.query.filter_by(owner_id=user.id, status='Interviewing').count(),
+        'Offers': JobApplication.query.filter_by(owner_id=user.id, status='Offer').count()
+    }
+    chart_data['datasets'].append({
+        'label': 'You',
+        'data': [user_stats['Apps Sent'], user_stats['Interviews'], user_stats['Offers']],
+        'backgroundColor': 'rgba(99, 102, 241, 0.7)'
+    })
+    
+    # Add friends' stats (top 2 friends)
+    colors = ['rgba(34, 197, 94, 0.7)', 'rgba(234, 179, 8, 0.7)']
+    for i, friend in enumerate(user.friends[:2]):
+        friend_stats = {
+            'Apps Sent': JobApplication.query.filter_by(owner_id=friend.id).count(),
+            'Interviews': JobApplication.query.filter_by(owner_id=friend.id, status='Interviewing').count(),
+            'Offers': JobApplication.query.filter_by(owner_id=friend.id, status='Offer').count()
+        }
+        chart_data['datasets'].append({
+            'label': friend.name,
+            'data': [friend_stats['Apps Sent'], friend_stats['Interviews'], friend_stats['Offers']],
+            'backgroundColor': colors[i % len(colors)]
+        })
+    
+    # Get applications shared with the current user
+    shared_apps = user.shared_applications  
+    
+    return render_template("comms.html", 
+                         active_page="comms", 
+                         current_user=user,
+                         leaderboard_data=leaderboard_data,
+                         chart_data=chart_data,
+                         shared_apps=shared_apps)
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
@@ -280,12 +347,22 @@ def add_friend():
     
     email = request.form.get('email')
     if email:
+        user = User.query.filter_by(name=session['name']).first()
+        
+        # Check if user is trying to add themselves
+        if email == user.email:
+            flash('You cannot add yourself as a friend', 'error')
+            return redirect(url_for('comms'))
+        
         friend = User.query.filter_by(email=email).first()
         if friend:
-            user = User.query.filter_by(name=session['name']).first()
-            user.friends.append(friend)
-            db.session.commit()
-            return redirect(url_for('comms'))
+            # Check if they're already friends
+            if friend in user.friends:
+                flash('You are already friends with this user', 'error')
+            else:
+                user.friends.append(friend)
+                db.session.commit()
+                flash('Friend added successfully', 'success')
         else:
             flash('User not found', 'error')
     else:
@@ -349,6 +426,61 @@ def job_tracker():
     for app in applications:
         grouped[app.status].append(app)
 
-    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)
+    return render_template("jobtracker.html", 
+                          active_page="job-tracker", 
+                          grouped=grouped,
+                          current_user=user)  
+
+@app.route('/share-application/<int:app_id>', methods=['POST'])
+def share_application(app_id):
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    
+    user = User.query.filter_by(name=session['name']).first()
+    application = JobApplication.query.get(app_id)
+    
+    if not application or application.owner_id != user.id:
+        flash('Application not found or you do not own this application', 'error')
+        return redirect(url_for('job_tracker'))
+    
+    friend_id = request.form.get('friend_id')
+    friend = User.query.get(friend_id)
+    
+    if friend and friend in user.friends:
+        if application not in friend.shared_applications:
+            friend.shared_applications.append(application)
+            db.session.commit()
+            flash(f'Application shared with {friend.name}', 'success')
+        else:
+            flash('Application already shared with this friend', 'error')
+    else:
+        flash('Friend not found', 'error')
+    
+    return redirect(url_for('job_tracker'))
+
+@app.route('/save-shared-application/<int:app_id>', methods=['POST'])
+def save_shared_application(app_id):
+    if 'name' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = User.query.filter_by(name=session['name']).first()
+    shared_app = JobApplication.query.get(app_id)
+    
+    if not shared_app or shared_app not in user.shared_applications:
+        return jsonify({'error': 'Application not found or not shared with you'}), 404
+    
+    # Create a copy of the shared application for the current user
+    new_app = JobApplication(
+        company=shared_app.company,
+        title=shared_app.title,
+        status='Saved',  # Default status when saving
+        date_applied=None,  # User hasn't applied yet
+        owner_id=user.id
+    )
+    
+    db.session.add(new_app)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Application saved to your tracker'})
 
 
