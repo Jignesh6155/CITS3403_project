@@ -151,7 +151,71 @@ def comms():
         return redirect(url_for('home'))
     
     user = User.query.filter_by(name=session['name']).first()
-    return render_template("comms.html", active_page="comms", current_user=user)
+    
+    # Get application counts for user and friends
+    leaderboard_data = []
+    
+    # Add current user's data
+    user_apps_count = JobApplication.query.filter_by(owner_id=user.id).count()
+    leaderboard_data.append({
+        'name': user.name,
+        'apps_count': user_apps_count,
+        'is_current_user': True
+    })
+    
+    # Add friends' data
+    for friend in user.friends:
+        friend_apps_count = JobApplication.query.filter_by(owner_id=friend.id).count()
+        leaderboard_data.append({
+            'name': friend.name,
+            'apps_count': friend_apps_count,
+            'is_current_user': False
+        })
+    
+    # Sort by application count (descending)
+    leaderboard_data.sort(key=lambda x: x['apps_count'], reverse=True)
+    
+    # Add rank to each entry
+    for i, entry in enumerate(leaderboard_data):
+        entry['rank'] = i + 1
+    
+    # Get stats for the chart
+    chart_data = {
+        'labels': ['Apps Sent', 'Interviews', 'Offers'],
+        'datasets': []
+    }
+    
+    # Add current user's stats
+    user_stats = {
+        'Apps Sent': JobApplication.query.filter_by(owner_id=user.id).count(),
+        'Interviews': JobApplication.query.filter_by(owner_id=user.id, status='Interviewing').count(),
+        'Offers': JobApplication.query.filter_by(owner_id=user.id, status='Offer').count()
+    }
+    chart_data['datasets'].append({
+        'label': 'You',
+        'data': [user_stats['Apps Sent'], user_stats['Interviews'], user_stats['Offers']],
+        'backgroundColor': 'rgba(99, 102, 241, 0.7)'
+    })
+    
+    # Add friends' stats (top 2 friends)
+    colors = ['rgba(34, 197, 94, 0.7)', 'rgba(234, 179, 8, 0.7)']
+    for i, friend in enumerate(user.friends[:2]):
+        friend_stats = {
+            'Apps Sent': JobApplication.query.filter_by(owner_id=friend.id).count(),
+            'Interviews': JobApplication.query.filter_by(owner_id=friend.id, status='Interviewing').count(),
+            'Offers': JobApplication.query.filter_by(owner_id=friend.id, status='Offer').count()
+        }
+        chart_data['datasets'].append({
+            'label': friend.name,
+            'data': [friend_stats['Apps Sent'], friend_stats['Interviews'], friend_stats['Offers']],
+            'backgroundColor': colors[i % len(colors)]
+        })
+    
+    return render_template("comms.html", 
+                         active_page="comms", 
+                         current_user=user,
+                         leaderboard_data=leaderboard_data,
+                         chart_data=chart_data)
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -280,12 +344,22 @@ def add_friend():
     
     email = request.form.get('email')
     if email:
+        user = User.query.filter_by(name=session['name']).first()
+        
+        # Check if user is trying to add themselves
+        if email == user.email:
+            flash('You cannot add yourself as a friend', 'error')
+            return redirect(url_for('comms'))
+        
         friend = User.query.filter_by(email=email).first()
         if friend:
-            user = User.query.filter_by(name=session['name']).first()
-            user.friends.append(friend)
-            db.session.commit()
-            return redirect(url_for('comms'))
+            # Check if they're already friends
+            if friend in user.friends:
+                flash('You are already friends with this user', 'error')
+            else:
+                user.friends.append(friend)
+                db.session.commit()
+                flash('Friend added successfully', 'success')
         else:
             flash('User not found', 'error')
     else:
