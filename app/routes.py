@@ -211,12 +211,15 @@ def comms():
             'backgroundColor': colors[i % len(colors)]
         })
     
+    # Get applications shared with the current user
+    shared_apps = user.shared_applications  
+    
     return render_template("comms.html", 
                          active_page="comms", 
                          current_user=user,
                          leaderboard_data=leaderboard_data,
-                         chart_data=chart_data)
-
+                         chart_data=chart_data,
+                         shared_apps=shared_apps)
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
@@ -423,6 +426,61 @@ def job_tracker():
     for app in applications:
         grouped[app.status].append(app)
 
-    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)
+    return render_template("jobtracker.html", 
+                          active_page="job-tracker", 
+                          grouped=grouped,
+                          current_user=user)  
+
+@app.route('/share-application/<int:app_id>', methods=['POST'])
+def share_application(app_id):
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    
+    user = User.query.filter_by(name=session['name']).first()
+    application = JobApplication.query.get(app_id)
+    
+    if not application or application.owner_id != user.id:
+        flash('Application not found or you do not own this application', 'error')
+        return redirect(url_for('job_tracker'))
+    
+    friend_id = request.form.get('friend_id')
+    friend = User.query.get(friend_id)
+    
+    if friend and friend in user.friends:
+        if application not in friend.shared_applications:
+            friend.shared_applications.append(application)
+            db.session.commit()
+            flash(f'Application shared with {friend.name}', 'success')
+        else:
+            flash('Application already shared with this friend', 'error')
+    else:
+        flash('Friend not found', 'error')
+    
+    return redirect(url_for('job_tracker'))
+
+@app.route('/save-shared-application/<int:app_id>', methods=['POST'])
+def save_shared_application(app_id):
+    if 'name' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = User.query.filter_by(name=session['name']).first()
+    shared_app = JobApplication.query.get(app_id)
+    
+    if not shared_app or shared_app not in user.shared_applications:
+        return jsonify({'error': 'Application not found or not shared with you'}), 404
+    
+    # Create a copy of the shared application for the current user
+    new_app = JobApplication(
+        company=shared_app.company,
+        title=shared_app.title,
+        status='Saved',  # Default status when saving
+        date_applied=None,  # User hasn't applied yet
+        owner_id=user.id
+    )
+    
+    db.session.add(new_app)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Application saved to your tracker'})
 
 

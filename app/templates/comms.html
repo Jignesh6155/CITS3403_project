@@ -57,49 +57,41 @@
 </section>
 
   <!-- Shared Applications (Center Big) -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2 lg:col-span-2">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2 lg:col-span-2">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
 
-    <!-- Filters -->
-    <div class="flex flex-wrap gap-4 mb-4">
-      <input type="text" placeholder="Search Company" class="border rounded px-3 py-2 text-sm flex-1" />
-      <select class="border rounded px-3 py-2 text-sm">
-        <option>Filter by Job Type</option>
-        <option>Internship</option>
-        <option>Full-Time</option>
-      </select>
-      <select class="border rounded px-3 py-2 text-sm">
-        <option>Sort by Date</option>
-        <option>Newest</option>
-        <option>Oldest</option>
-      </select>
-    </div>
+  <!-- Filters -->
+  <div class="flex flex-wrap gap-4 mb-4">
+    <input type="text" placeholder="Search Company" class="border rounded px-3 py-2 text-sm flex-1" />
+    <select class="border rounded px-3 py-2 text-sm">
+      <option>Filter by Job Type</option>
+      <option>Internship</option>
+      <option>Full-Time</option>
+    </select>
+    <select class="border rounded px-3 py-2 text-sm">
+      <option>Sort by Date</option>
+      <option>Newest</option>
+      <option>Oldest</option>
+    </select>
+  </div>
 
-    <!-- Shared Apps List -->
-    <ul class="space-y-3">
+  <!-- Shared Apps List -->
+<ul class="space-y-3" id="shared-apps-list">
+  {% if shared_apps %}
+    {% for app in shared_apps %}
       <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
         <div>
-          <p class="font-semibold">Google - Software Engineer</p>
-          <p class="text-gray-500 text-sm">Shared by Jane | 2025-03-21</p>
+          <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
+          <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
         </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
+        <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
       </li>
-      <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
-        <div>
-          <p class="font-semibold">Amazon - Cloud Support</p>
-          <p class="text-gray-500 text-sm">Shared by John | 2025-03-19</p>
-        </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
-      </li>
-      <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
-        <div>
-          <p class="font-semibold">Meta - Data Analyst</p>
-          <p class="text-gray-500 text-sm">Shared by Alex | 2025-03-18</p>
-        </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
-      </li>
-    </ul>
-  </section>
+    {% endfor %}
+  {% else %}
+    <li class="text-gray-400 text-center py-4">No applications have been shared with you yet.</li>
+  {% endif %}
+</ul>
+</section>
 
   <!-- Stat Graphs (Bottom Full Width) -->
   <section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
@@ -128,5 +120,41 @@
       }
     }
   });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sharedAppsList = document.getElementById('shared-apps-list');
+    if (sharedAppsList) {
+        sharedAppsList.addEventListener('click', function(e) {
+            if (e.target.classList.contains('save-app-btn')) {
+                const appId = e.target.getAttribute('data-app-id');
+                saveApplication(appId);
+            }
+        });
+    }
+});
+
+function saveApplication(appId) {
+    fetch(`/save-shared-application/${appId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Application saved to your tracker!');
+            // Optionally reload the page or update the UI
+        } else {
+            alert(data.error || 'Failed to save application');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save application');
+    });
+}
 </script>
 {% endblock %}

@@ -51,6 +51,9 @@
                 <p class="font-semibold text-indigo-800">{{ job.company }}</p>
                 <p class="text-gray-600">{{ job.title }}</p>
                 <p class="text-gray-400 text-sm">{{ job.date_applied.strftime('%Y-%m-%d') }}</p>
+                <button onclick="openShareModal('{{ job.id }}')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded">
+    Share
+  </button>
               </div>
             {% endfor %}
           </td>
@@ -87,6 +90,27 @@
     </div>
   </div>
 </div>
+
+<div id="shareModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
+  <div class="bg-white p-8 rounded-lg w-full max-w-md relative">
+    <button onclick="closeShareModal()" class="absolute top-4 right-6 text-gray-500 hover:text-black text-2xl">&times;</button>
+    <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Share Application</h2>
+    <form id="shareForm" method="POST" class="flex flex-col gap-4">
+      <input type="hidden" id="shareAppId" name="app_id">
+      <select id="shareFriendId" name="friend_id" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
+        <option value="" disabled selected>Select Friend</option>
+        {% for friend in current_user.friends %}
+          <option value="{{ friend.id }}">{{ friend.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">
+        Share
+      </button>
+    </form>
+  </div>
+</div>
+</div>  
+
 {% endblock %}
 
 {% block scripts %}
@@ -172,5 +196,55 @@ searchInput.addEventListener("input", function() {
     job.parentElement.style.display = text.includes(filter) ? "" : "none";
   });
 });
+</script>
+
+<script>
+// SHARE APPLICATION MODAL
+const shareModal = document.getElementById('shareModal');
+const shareForm = document.getElementById('shareForm');
+
+function openShareModal(appId) {
+  document.getElementById('shareAppId').value = appId;
+  shareModal.classList.remove('hidden');
+}
+
+function closeShareModal() {
+  shareModal.classList.add('hidden');
+}
+
+shareForm.onsubmit = function(e) {
+  e.preventDefault();
+  const appId = document.getElementById('shareAppId').value;
+  const friendId = document.getElementById('shareFriendId').value;
+  
+  fetch(`/share-application/${appId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `friend_id=${friendId}`
+  })
+  .then(response => {
+    if (response.redirected) {
+      window.location.href = response.url;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to share application');
+  });
+  
+  closeShareModal();
+};
+
+// Update the window.onclick function to handle both modals
+window.onclick = function(e) {
+  if (e.target === modal) {
+    modal.classList.add('hidden');
+  }
+  if (e.target === shareModal) {
+    closeShareModal();
+  }
+}
 </script>
 {% endblock %}
