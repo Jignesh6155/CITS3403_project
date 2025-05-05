@@ -607,7 +607,7 @@ def notifications():
                 'link': n.link,
                 'type': n.type,
                 'is_read': n.is_read,
-                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'created_at': n.created_at.isoformat() + 'Z'  # Return ISO format with UTC timezone
             } for n in notifications.items],
             'has_next': notifications.has_next,
             'total': notifications.total

@@ -156,32 +156,62 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Time ago function for dates
-  function timeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    
-    let interval = Math.floor(seconds / 31536000);
-    if (interval > 1) return interval + ' years ago';
-    if (interval === 1) return '1 year ago';
-    
-    interval = Math.floor(seconds / 2592000);
-    if (interval > 1) return interval + ' months ago';
-    if (interval === 1) return '1 month ago';
-    
-    interval = Math.floor(seconds / 86400);
-    if (interval > 1) return interval + ' days ago';
-    if (interval === 1) return '1 day ago';
-    
-    interval = Math.floor(seconds / 3600);
-    if (interval > 1) return interval + ' hours ago';
-    if (interval === 1) return '1 hour ago';
-    
-    interval = Math.floor(seconds / 60);
-    if (interval > 1) return interval + ' minutes ago';
-    if (interval === 1) return '1 minute ago';
-    
-    if (seconds < 10) return 'just now';
-    return Math.floor(seconds) + ' seconds ago';
+function timeAgo(dateStr) {
+  // Check if we received a backend formatted datetime without timezone
+  // Format: "2025-05-06 14:30:45"
+  if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+    // Assume UTC and convert to ISO format
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
+  
+  // Ensure the date is properly parsed
+  const date = new Date(dateStr);
+  
+  // Validate if the date is valid
+  if (isNaN(date.getTime())) {
+    console.error('Invalid date provided to timeAgo:', dateStr);
+    return 'unknown time ago';
+  }
+  
+  // Compare with current time
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  // For debugging - log time difference info
+  console.log('Time difference debugging:', {
+    now: now.toISOString(),
+    date: date.toISOString(),
+    differenceInSeconds: seconds
+  });
+  
+  // Negative time difference guard
+  if (seconds < 0) {
+    return 'in the future';
+  }
+  
+  let interval = Math.floor(seconds / 31536000);
+  if (interval > 1) return interval + ' years ago';
+  if (interval === 1) return '1 year ago';
+  
+  interval = Math.floor(seconds / 2592000);
+  if (interval > 1) return interval + ' months ago';
+  if (interval === 1) return '1 month ago';
+  
+  interval = Math.floor(seconds / 86400);
+  if (interval > 1) return interval + ' days ago';
+  if (interval === 1) return '1 day ago';
+  
+  interval = Math.floor(seconds / 3600);
+  if (interval > 1) return interval + ' hours ago';
+  if (interval === 1) return '1 hour ago';
+  
+  interval = Math.floor(seconds / 60);
+  if (interval > 1) return interval + ' minutes ago';
+  if (interval === 1) return '1 minute ago';
+  
+  if (seconds < 10) return 'just now';
+  return Math.floor(seconds) + ' seconds ago';
+}
   
   // Initialize notification count on page load and set interval to update
   updateNotificationCount();
