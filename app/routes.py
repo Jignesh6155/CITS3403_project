@@ -211,9 +211,18 @@ def comms():
 
     user = User.query.filter_by(name=session['name']).first()
 
-    # Prevent chart crash by passing empty data
-    return render_template("comms.html", active_page="comms", current_user=user, chart_data={})
+    # ✅ Get all JobApplications where the current user is in shared_with
+    shared_apps = JobApplication.query \
+        .filter(JobApplication.shared_with.any(id=user.id)) \
+        .all()
 
+    return render_template(
+        "comms.html",
+        active_page="comms",
+        current_user=user,
+        shared_apps=shared_apps,
+        chart_data={}
+    )
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -414,18 +423,19 @@ def job_tracker():
         return redirect(url_for('home'))
     
     user = User.query.filter_by(name=session['name']).first()
-    applications = JobApplication.query.filter_by(owner=user).all()
-    
+
+    # 🚫 Only applications OWNED by the current user
+    applications = JobApplication.query.filter_by(owner_id=user.id).all()
+
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     grouped = {status: [] for status in statuses}
-    
+
     for app in applications:
         grouped[app.status].append(app)
-    
-    # 👇 This was missing
+
     return render_template(
         "jobtracker.html",
         active_page="job-tracker",
         grouped=grouped,
-        current_user=user  # ← ADD THIS
+        current_user=user
     )
