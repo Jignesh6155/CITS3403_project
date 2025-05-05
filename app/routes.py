@@ -371,6 +371,33 @@ def add_application():
     db.session.commit()
     return redirect(url_for("job_tracker"))
 
+@app.route('/share-application/<int:app_id>', methods=['POST'])
+def share_application(app_id):
+    if 'name' not in session:
+        return redirect(url_for('home'))
+
+    user = User.query.filter_by(name=session['name']).first()
+    application = JobApplication.query.get(app_id)
+
+    if not application or application.owner_id != user.id:
+        flash('Application not found or you do not own this application', 'error')
+        return redirect(url_for('job_tracker'))
+
+    friend_id = request.form.get('friend_id')
+    friend = User.query.get(friend_id)
+
+    if friend and friend in user.friends:
+        if application not in friend.shared_applications:
+            friend.shared_applications.append(application)
+            db.session.commit()
+            flash(f'Application shared with {friend.name}', 'success')
+        else:
+            flash('Application already shared with this friend', 'error')
+    else:
+        flash('Friend not found', 'error')
+
+    return redirect(url_for('job_tracker'))
+
 @app.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
@@ -381,14 +408,24 @@ def update_job_status():
     job.status = new_status
     db.session.commit()
     return jsonify({"message": "Status updated"})
-@app.route("/job-tracker")
+@app.route('/job-tracker')
 def job_tracker():
     if 'name' not in session:
         return redirect(url_for('home'))
+    
     user = User.query.filter_by(name=session['name']).first()
     applications = JobApplication.query.filter_by(owner=user).all()
+    
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     grouped = {status: [] for status in statuses}
+    
     for app in applications:
         grouped[app.status].append(app)
-    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)
+    
+    # 👇 This was missing
+    return render_template(
+        "jobtracker.html",
+        active_page="job-tracker",
+        grouped=grouped,
+        current_user=user  # ← ADD THIS
+    )
