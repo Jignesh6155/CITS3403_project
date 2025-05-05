@@ -93,20 +93,21 @@
 </ul>
 </section>
 
-  <!-- Stat Graphs (Bottom Full Width) -->
-  <section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Stats</h2>
-    <canvas id="comparisonChart" height="100"></canvas>
-  </section>
+<!-- Stat Graphs (Bottom Full Width) -->
+<section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Stats</h2>
+  <canvas id="comparisonChart" height="100"></canvas>
+</section>
 
 </main>
 
+<!-- Chart.js (load once) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if chart_data %}
 <script>
-  // Parse the JSON data that's being passed from Flask
   const chartData = JSON.parse('{{ chart_data|tojson|safe }}');
-  
+
   new Chart(document.getElementById('comparisonChart'), {
     type: 'bar',
     data: chartData,
@@ -121,39 +122,39 @@
     }
   });
 </script>
+{% endif %}
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const sharedAppsList = document.getElementById('shared-apps-list');
-    if (sharedAppsList) {
-        sharedAppsList.addEventListener('click', function(e) {
-            if (e.target.classList.contains('save-app-btn')) {
-                const appId = e.target.getAttribute('data-app-id');
-                saveApplication(appId);
-            }
-        });
-    }
+document.addEventListener('DOMContentLoaded', function () {
+  const sharedAppsList = document.getElementById('shared-apps-list');
+  if (sharedAppsList) {
+    sharedAppsList.addEventListener('click', function (e) {
+      if (e.target.classList.contains('save-app-btn')) {
+        const appId = e.target.getAttribute('data-app-id');
+        saveApplication(appId);
+      }
+    });
+  }
 });
 
 function saveApplication(appId) {
-    fetch(`/save-shared-application/${appId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
+  fetch(`/save-shared-application/${appId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            alert('Application saved to your tracker!');
-            // Optionally reload the page or update the UI
-        } else {
-            alert(data.error || 'Failed to save application');
-        }
+      if (data.success) {
+        alert('Application saved to your tracker!');
+      } else {
+        alert(data.error || 'Failed to save application');
+      }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save application');
+      console.error('Error:', error);
+      alert('Failed to save application');
     });
 }
 </script>

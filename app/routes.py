@@ -208,9 +208,13 @@ def analytics():
 def comms():
     if 'name' not in session:
         return redirect(url_for('home'))
-    
+
     user = User.query.filter_by(name=session['name']).first()
-    return render_template("comms.html", active_page="comms", current_user=user)
+
+    # Prevent chart crash by passing empty data
+    return render_template("comms.html", active_page="comms", current_user=user, chart_data={})
+
+
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
