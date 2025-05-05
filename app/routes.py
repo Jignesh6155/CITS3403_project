@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
-from app.models import db, User, JobApplication
+from app.models import db, User, JobApplication, FriendRequest
 from app.models import ScrapedJob
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
@@ -11,6 +11,32 @@ import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
 import datetime
+# Add after existing imports
+from datetime import datetime, timedelta
+
+# Simple in-memory rate limiting
+request_counts = {}
+
+def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
+    """Basic rate limiting"""
+    key = f"{user_id}:{action}"
+    now = datetime.utcnow()
+    
+    if key not in request_counts:
+        request_counts[key] = []
+    
+    # Clean old requests
+    request_counts[key] = [t for t in request_counts[key] 
+                           if t > now - timedelta(seconds=window_seconds)]
+    
+    # Check if over limit
+    if len(request_counts[key]) >= max_requests:
+        return False
+    
+    # Add current request
+    request_counts[key].append(now)
+    return True
+
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = True  # Set to False temporarily for debugging
@@ -215,15 +241,20 @@ def comms():
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
         .all()
+    
+    # Get pending friend requests
+    pending_requests = FriendRequest.query.filter_by(
+        receiver_id=user.id, status='pending'
+    ).all()
 
     return render_template(
         "comms.html",
         active_page="comms",
         current_user=user,
         shared_apps=shared_apps,
+        pending_requests=pending_requests,
         chart_data={}
     )
-
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
@@ -338,26 +369,105 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
-@app.route('/add-friend', methods=['POST'])
-def add_friend():
+@app.route('/send-friend-request', methods=['POST'])
+def send_friend_request():
     if 'name' not in session:
         return redirect(url_for('home'))
     
     email = request.form.get('email')
     if email:
-        friend = User.query.filter_by(email=email).first()
-        if friend:
-            user = User.query.filter_by(name=session['name']).first()
-            user.friends.append(friend)
-            db.session.commit()
+        current_user = User.query.filter_by(name=session['name']).first()
+        
+        # Rate limiting
+        if not rate_limit_check(current_user.id, 'friend_request', max_requests=10, window_seconds=3600):
+            flash('You have sent too many friend requests. Please try again later.', 'error')
             return redirect(url_for('comms'))
-        else:
+            
+        friend = User.query.filter_by(email=email).first()
+        
+        if not friend:
             flash('User not found', 'error')
+            return redirect(url_for('comms'))
+            
+        if friend.id == current_user.id:
+            flash('You cannot send a friend request to yourself', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if already friends
+        if friend in current_user.friends:
+            flash('You are already friends with this user', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if request already exists
+        existing_request = FriendRequest.query.filter_by(
+            sender_id=current_user.id, receiver_id=friend.id, status='pending'
+        ).first()
+        
+        if existing_request:
+            flash('Friend request already sent', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if there's a request from the other user
+        existing_reverse_request = FriendRequest.query.filter_by(
+            sender_id=friend.id, receiver_id=current_user.id, status='pending'
+        ).first()
+        
+        if existing_reverse_request:
+            # Auto-accept the other request
+            existing_reverse_request.status = 'accepted'
+            # Ensure bidirectional friendship
+            current_user.friends.append(friend)
+            friend.friends.append(current_user)
+            db.session.commit()
+            flash(f'You are now friends with {friend.name}', 'success')
+            return redirect(url_for('comms'))
+        
+        # Create a new request
+        new_request = FriendRequest(
+            sender_id=current_user.id,
+            receiver_id=friend.id,
+            status='pending'
+        )
+        db.session.add(new_request)
+        db.session.commit()
+        
+        flash('Friend request sent', 'success')
     else:
         flash('Please enter an email', 'error')
+        
+    return redirect(url_for('comms'))
+@app.route('/handle-friend-request/<int:request_id>', methods=['POST'])
+def handle_friend_request(request_id):
+    if 'name' not in session:
+        return redirect(url_for('home'))
+        
+    current_user = User.query.filter_by(name=session['name']).first()
+    friend_request = FriendRequest.query.get(request_id)
+    
+    # Security checks
+    if not friend_request or friend_request.receiver_id != current_user.id:
+        flash('Invalid request', 'error')
+        return redirect(url_for('comms'))
+        
+    action = request.form.get('action')
+    
+    if action == 'accept':
+        friend_request.status = 'accepted'
+        # Add to friends (both ways)
+        sender = User.query.get(friend_request.sender_id)
+        
+        # Ensure bidirectional friendship
+        current_user.friends.append(sender)
+        sender.friends.append(current_user)
+        
+        db.session.commit()
+        flash(f'You are now friends with {sender.name}', 'success')
+    elif action == 'reject':
+        friend_request.status = 'rejected'
+        db.session.commit()
+        flash('Friend request rejected', 'success')
     
     return redirect(url_for('comms'))
-
 @app.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
