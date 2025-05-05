@@ -120,9 +120,91 @@ def signin():
 
 @app.route("/dashboard")
 def dashboard():
-    name = session.get("name", "User")
-    return render_template("dashboard.html", name=name)
+    if 'name' not in session:
+        return redirect(url_for("home"))
 
+    user = User.query.filter_by(name=session["name"]).first()
+    if not user:
+        return redirect(url_for("home"))
+
+    applications = JobApplication.query.filter_by(owner=user).all()
+
+    all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
+    status_counts_dict = {status: 0 for status in all_statuses}
+    company_counts = {}
+    last_applied_raw = None
+
+    for app in applications:
+        if app.status in status_counts_dict:
+            status_counts_dict[app.status] += 1
+        if app.date_applied:
+            if not last_applied_raw or app.date_applied > last_applied_raw:
+                last_applied_raw = app.date_applied
+
+    last_applied = last_applied_raw.strftime("%Y-%m-%d") if last_applied_raw else "N/A"
+
+    status_labels = []
+    status_counts = []
+    for status, count in status_counts_dict.items():
+        if count > 0:
+            status_labels.append(status)
+            status_counts.append(count)
+
+    status_summary = list(zip(status_labels, status_counts))
+
+    applied = status_counts_dict["Applied"]
+    saved = status_counts_dict["Saved"]
+    interviewing = status_counts_dict["Interviewing"]
+    offers = status_counts_dict["Offer"]
+    in_progress = sum(status_counts_dict[s] for s in all_statuses if s not in ["Accepted", "Archived", "Discontinued"])
+
+    inactive_statuses = {"Accepted", "Archived", "Discontinued"}
+    active_applications = [app for app in applications if app.status not in inactive_statuses]
+    active_count = len(active_applications)
+
+    achievements = []
+    if applied >= 1:
+        achievements.append(("First Application Sent", "You're on your way!", "green"))
+    if interviewing >= 1:
+        achievements.append(("First Interview!", "Nailed the first impression!", "blue"))
+    if offers >= 1:
+        achievements.append(("Offer Received", "You got the bag!", "yellow"))
+    if applied >= 10:
+        achievements.append(("Application Hustler", "10+ applications sent!", "purple"))
+    if offers >= 3:
+        achievements.append(("Multi-Offer Champ", "3+ offers received!", "orange"))
+    if interviewing >= 5:
+        achievements.append(("Interview Veteran", "5 interviews done!", "blue"))
+    if saved >= 5:
+        achievements.append(("Job Curator", "Saved 5 jobs to consider!", "cyan"))
+    if saved >= 15:
+        achievements.append(("Opportunity Hoarder", "15 jobs saved!", "pink"))
+    if in_progress >= 10:
+        achievements.append(("On the Grind", "10 ongoing applications!", "lime"))
+    if status_counts_dict["Archived"] >= 1:
+        achievements.append(("Archived Veteran", "At least 1 role archived.", "gray"))
+    if status_counts_dict["Accepted"] >= 1:
+        achievements.append(("You're Hired!", "Accepted an offer!", "emerald"))
+    if status_counts_dict["Discontinued"] >= 1:
+        achievements.append(("No Longer Pursuing", "Moved on from a role.", "rose"))
+
+    badges_earned = len(achievements)
+
+    return render_template("dashboard.html",
+        name=user.name,
+        in_progress=in_progress,
+        interviews=interviewing,
+        applied=applied,
+        saved=saved,
+        offers=offers,
+        last_applied=last_applied,
+        status_labels=status_labels,
+        status_counts=status_counts,
+        status_summary=status_summary,
+        active_count=active_count,
+        badges_earned=badges_earned,
+        achievements=achievements
+    )
 @app.route("/logout")
 def logout():
     session.clear()
