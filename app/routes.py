@@ -11,12 +11,10 @@ import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
 import datetime
-
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = True  # Set to False temporarily for debugging
 SCRAPE_SIZE = 1
-
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
     with app.app_context():
@@ -82,17 +80,14 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
             'status': 'complete'
         })
         print(f"[DEBUG] Scraping complete, sent completion message to queue")
-
 @app.route("/")
 def home():
     return render_template("index.html")
-
 @app.route("/signup", methods=["POST"])
 def signup():
     name = request.form.get("name")
     email = request.form.get("email")
     password = request.form.get("password")
-
     if name and email and password:
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
@@ -103,12 +98,10 @@ def signup():
         session["name"] = name
         return redirect(url_for("dashboard"))
     return render_template("index.html", error="All fields are required.")
-
 @app.route("/signin", methods=["POST"])
 def signin():
     email = request.form.get("email")
     password = request.form.get("password")
-
     if email and password:
         user = User.query.filter_by(email=email, password=password).first()
         if user:
@@ -117,17 +110,85 @@ def signin():
         else:
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
-
 @app.route("/dashboard")
 def dashboard():
-    name = session.get("name", "User")
-    return render_template("dashboard.html", name=name)
-
+    if 'name' not in session:
+        return redirect(url_for("home"))
+    user = User.query.filter_by(name=session["name"]).first()
+    if not user:
+        return redirect(url_for("home"))
+    applications = JobApplication.query.filter_by(owner=user).all()
+    all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
+    status_counts_dict = {status: 0 for status in all_statuses}
+    company_counts = {}
+    last_applied_raw = None
+    for app in applications:
+        if app.status in status_counts_dict:
+            status_counts_dict[app.status] += 1
+        if app.date_applied:
+            if not last_applied_raw or app.date_applied > last_applied_raw:
+                last_applied_raw = app.date_applied
+    last_applied = last_applied_raw.strftime("%Y-%m-%d") if last_applied_raw else "N/A"
+    status_labels = []
+    status_counts = []
+    for status, count in status_counts_dict.items():
+        if count > 0:
+            status_labels.append(status)
+            status_counts.append(count)
+    status_summary = list(zip(status_labels, status_counts))
+    applied = status_counts_dict["Applied"]
+    saved = status_counts_dict["Saved"]
+    interviewing = status_counts_dict["Interviewing"]
+    offers = status_counts_dict["Offer"]
+    in_progress = sum(status_counts_dict[s] for s in all_statuses if s not in ["Accepted", "Archived", "Discontinued"])
+    inactive_statuses = {"Accepted", "Archived", "Discontinued"}
+    active_applications = [app for app in applications if app.status not in inactive_statuses]
+    active_count = len(active_applications)
+    achievements = []
+    if applied >= 1:
+        achievements.append(("First Application Sent", "You're on your way!", "green"))
+    if interviewing >= 1:
+        achievements.append(("First Interview!", "Nailed the first impression!", "blue"))
+    if offers >= 1:
+        achievements.append(("Offer Received", "You got the bag!", "yellow"))
+    if applied >= 10:
+        achievements.append(("Application Hustler", "10+ applications sent!", "purple"))
+    if offers >= 3:
+        achievements.append(("Multi-Offer Champ", "3+ offers received!", "orange"))
+    if interviewing >= 5:
+        achievements.append(("Interview Veteran", "5 interviews done!", "blue"))
+    if saved >= 5:
+        achievements.append(("Job Curator", "Saved 5 jobs to consider!", "cyan"))
+    if saved >= 15:
+        achievements.append(("Opportunity Hoarder", "15 jobs saved!", "pink"))
+    if in_progress >= 10:
+        achievements.append(("On the Grind", "10 ongoing applications!", "lime"))
+    if status_counts_dict["Archived"] >= 1:
+        achievements.append(("Archived Veteran", "At least 1 role archived.", "gray"))
+    if status_counts_dict["Accepted"] >= 1:
+        achievements.append(("You're Hired!", "Accepted an offer!", "emerald"))
+    if status_counts_dict["Discontinued"] >= 1:
+        achievements.append(("No Longer Pursuing", "Moved on from a role.", "rose"))
+    badges_earned = len(achievements)
+    return render_template("dashboard.html",
+        name=user.name,
+        in_progress=in_progress,
+        interviews=interviewing,
+        applied=applied,
+        saved=saved,
+        offers=offers,
+        last_applied=last_applied,
+        status_labels=status_labels,
+        status_counts=status_counts,
+        status_summary=status_summary,
+        active_count=active_count,
+        badges_earned=badges_earned,
+        achievements=achievements
+    )
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
-
 @app.route("/job-search")
 def job_search():
     scraped_jobs = ScrapedJob.query.all()
@@ -140,86 +201,16 @@ def job_search():
     resume_keywords = session.pop('resume_keywords', [])
     suggested_jobs = session.pop('suggested_jobs', [])
     return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
-
 @app.route("/analytics")
 def analytics():
     return render_template("analytics.html", active_page="analytics")
-
 @app.route("/comms")
 def comms():
     if 'name' not in session:
         return redirect(url_for('home'))
     
     user = User.query.filter_by(name=session['name']).first()
-    
-    # Get application counts for user and friends
-    leaderboard_data = []
-    
-    # Add current user's data
-    user_apps_count = JobApplication.query.filter_by(owner_id=user.id).count()
-    leaderboard_data.append({
-        'name': user.name,
-        'apps_count': user_apps_count,
-        'is_current_user': True
-    })
-    
-    # Add friends' data
-    for friend in user.friends:
-        friend_apps_count = JobApplication.query.filter_by(owner_id=friend.id).count()
-        leaderboard_data.append({
-            'name': friend.name,
-            'apps_count': friend_apps_count,
-            'is_current_user': False
-        })
-    
-    # Sort by application count (descending)
-    leaderboard_data.sort(key=lambda x: x['apps_count'], reverse=True)
-    
-    # Add rank to each entry
-    for i, entry in enumerate(leaderboard_data):
-        entry['rank'] = i + 1
-    
-    # Get stats for the chart
-    chart_data = {
-        'labels': ['Apps Sent', 'Interviews', 'Offers'],
-        'datasets': []
-    }
-    
-    # Add current user's stats
-    user_stats = {
-        'Apps Sent': JobApplication.query.filter_by(owner_id=user.id).count(),
-        'Interviews': JobApplication.query.filter_by(owner_id=user.id, status='Interviewing').count(),
-        'Offers': JobApplication.query.filter_by(owner_id=user.id, status='Offer').count()
-    }
-    chart_data['datasets'].append({
-        'label': 'You',
-        'data': [user_stats['Apps Sent'], user_stats['Interviews'], user_stats['Offers']],
-        'backgroundColor': 'rgba(99, 102, 241, 0.7)'
-    })
-    
-    # Add friends' stats (top 2 friends)
-    colors = ['rgba(34, 197, 94, 0.7)', 'rgba(234, 179, 8, 0.7)']
-    for i, friend in enumerate(user.friends[:2]):
-        friend_stats = {
-            'Apps Sent': JobApplication.query.filter_by(owner_id=friend.id).count(),
-            'Interviews': JobApplication.query.filter_by(owner_id=friend.id, status='Interviewing').count(),
-            'Offers': JobApplication.query.filter_by(owner_id=friend.id, status='Offer').count()
-        }
-        chart_data['datasets'].append({
-            'label': friend.name,
-            'data': [friend_stats['Apps Sent'], friend_stats['Interviews'], friend_stats['Offers']],
-            'backgroundColor': colors[i % len(colors)]
-        })
-    
-    # Get applications shared with the current user
-    shared_apps = user.shared_applications  
-    
-    return render_template("comms.html", 
-                         active_page="comms", 
-                         current_user=user,
-                         leaderboard_data=leaderboard_data,
-                         chart_data=chart_data,
-                         shared_apps=shared_apps)
+    return render_template("comms.html", active_page="comms", current_user=user)
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
@@ -263,7 +254,6 @@ def upload():
     session['resume_keywords'] = []
     session['suggested_jobs'] = []
     return redirect(url_for('job_search'))
-
 @app.route("/api/scraped-jobs")
 def api_scraped_jobs():
     # Get query params
@@ -273,11 +263,9 @@ def api_scraped_jobs():
     category = request.args.get('category', '').strip().lower()
     offset = int(request.args.get('offset', 0))
     limit = int(request.args.get('limit', 10))
-
     # Query all jobs
     jobs_query = ScrapedJob.query
     jobs = jobs_query.all()
-
     filtered = [job for job in jobs if job_matches(job, search, location, job_type, category)]
     total = len(filtered)
     paginated = filtered[offset:offset+limit]
@@ -299,7 +287,6 @@ def api_scraped_jobs():
         'jobs': result,
         'has_more': offset+limit < total
     })
-
 @app.route('/api/start-scraping', methods=['POST'])
 def api_start_scraping():
     try:
@@ -321,7 +308,6 @@ def api_start_scraping():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
 @app.route('/api/scraping-stream')
 def api_scraping_stream():
     def event_stream():
@@ -339,7 +325,6 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
-
 @app.route('/add-friend', methods=['POST'])
 def add_friend():
     if 'name' not in session:
@@ -347,22 +332,12 @@ def add_friend():
     
     email = request.form.get('email')
     if email:
-        user = User.query.filter_by(name=session['name']).first()
-        
-        # Check if user is trying to add themselves
-        if email == user.email:
-            flash('You cannot add yourself as a friend', 'error')
-            return redirect(url_for('comms'))
-        
         friend = User.query.filter_by(email=email).first()
         if friend:
-            # Check if they're already friends
-            if friend in user.friends:
-                flash('You are already friends with this user', 'error')
-            else:
-                user.friends.append(friend)
-                db.session.commit()
-                flash('Friend added successfully', 'success')
+            user = User.query.filter_by(name=session['name']).first()
+            user.friends.append(friend)
+            db.session.commit()
+            return redirect(url_for('comms'))
         else:
             flash('User not found', 'error')
     else:
@@ -370,21 +345,17 @@ def add_friend():
     
     return redirect(url_for('comms'))
 
-
 @app.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
         return redirect(url_for('home'))
-
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return redirect(url_for('home'))
-
     company = request.form.get("company")
     title = request.form.get("title")
     date_applied = request.form.get("date_applied")
     status = request.form.get("status")
-
     application = JobApplication(
         company=company,
         title=title,
@@ -392,95 +363,28 @@ def add_application():
         date_applied=datetime.datetime.strptime(date_applied, "%Y-%m-%d"),
         owner=user
     )
-
     db.session.add(application)
     db.session.commit()
-
     return redirect(url_for("job_tracker"))
-
 
 @app.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
     new_status = request.json.get("new_status")
-
     job = JobApplication.query.get(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
-
     job.status = new_status
     db.session.commit()
-
     return jsonify({"message": "Status updated"})
-
 @app.route("/job-tracker")
 def job_tracker():
     if 'name' not in session:
         return redirect(url_for('home'))
-
     user = User.query.filter_by(name=session['name']).first()
     applications = JobApplication.query.filter_by(owner=user).all()
-
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     grouped = {status: [] for status in statuses}
     for app in applications:
         grouped[app.status].append(app)
-
-    return render_template("jobtracker.html", 
-                          active_page="job-tracker", 
-                          grouped=grouped,
-                          current_user=user)  
-
-@app.route('/share-application/<int:app_id>', methods=['POST'])
-def share_application(app_id):
-    if 'name' not in session:
-        return redirect(url_for('home'))
-    
-    user = User.query.filter_by(name=session['name']).first()
-    application = JobApplication.query.get(app_id)
-    
-    if not application or application.owner_id != user.id:
-        flash('Application not found or you do not own this application', 'error')
-        return redirect(url_for('job_tracker'))
-    
-    friend_id = request.form.get('friend_id')
-    friend = User.query.get(friend_id)
-    
-    if friend and friend in user.friends:
-        if application not in friend.shared_applications:
-            friend.shared_applications.append(application)
-            db.session.commit()
-            flash(f'Application shared with {friend.name}', 'success')
-        else:
-            flash('Application already shared with this friend', 'error')
-    else:
-        flash('Friend not found', 'error')
-    
-    return redirect(url_for('job_tracker'))
-
-@app.route('/save-shared-application/<int:app_id>', methods=['POST'])
-def save_shared_application(app_id):
-    if 'name' not in session:
-        return jsonify({'error': 'Not logged in'}), 401
-    
-    user = User.query.filter_by(name=session['name']).first()
-    shared_app = JobApplication.query.get(app_id)
-    
-    if not shared_app or shared_app not in user.shared_applications:
-        return jsonify({'error': 'Application not found or not shared with you'}), 404
-    
-    # Create a copy of the shared application for the current user
-    new_app = JobApplication(
-        company=shared_app.company,
-        title=shared_app.title,
-        status='Saved',  # Default status when saving
-        date_applied=None,  # User hasn't applied yet
-        owner_id=user.id
-    )
-    
-    db.session.add(new_app)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Application saved to your tracker'})
-
-
+    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)
