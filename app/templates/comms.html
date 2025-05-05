@@ -75,22 +75,24 @@
       </select>
     </div>
 
-    <!-- Shared Apps List -->
-    <ul class="space-y-3" id="shared-apps-list">
-      {% if shared_apps %}
-        {% for app in shared_apps %}
-          <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
-            <div>
-              <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
-              <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
-            </div>
-            <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
-          </li>
-        {% endfor %}
-      {% else %}
-        <li class="text-gray-400 text-center py-4">No applications have been shared with you yet.</li>
-      {% endif %}
-    </ul>
+    <!-- Shared Apps List - Now with fixed height and always scrollable -->
+    <div class="overflow-y-scroll h-64 border border-gray-200 rounded mb-4">
+      <ul class="space-y-3 p-4" id="shared-apps-list">
+        {% if shared_apps %}
+          {% for app in shared_apps %}
+            <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
+              <div>
+                <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
+                <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+              </div>
+              <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="text-gray-400 text-center py-4">No applications have been shared with you yet.</li>
+        {% endif %}
+      </ul>
+    </div>
   </section>
 
   <!-- Career Stats Chart -->
