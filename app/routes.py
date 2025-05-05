@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
-from app.models import db, User, JobApplication, FriendRequest
+from app.models import db, User, JobApplication, FriendRequest, Notification
 from app.models import ScrapedJob
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
@@ -36,6 +36,19 @@ def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
     # Add current request
     request_counts[key].append(now)
     return True
+
+def create_notification(user_id, content, link=None, notification_type="general"):
+    """Create a notification for a user"""
+    notification = Notification(
+        user_id=user_id,
+        content=content,
+        link=link,
+        type=notification_type,
+        is_read=False
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
 
 # Global variables (for testing)
 live_job_queue = queue.Queue()
@@ -430,6 +443,14 @@ def send_friend_request():
         )
         db.session.add(new_request)
         db.session.commit()
+
+        create_notification(
+            friend.id, 
+            f"{current_user.name} sent you a friend request", 
+            link=url_for('comms'), 
+            notification_type="friend_request"
+        )
+
         
         flash('Friend request sent', 'success')
     else:
@@ -509,6 +530,13 @@ def share_application(app_id):
         if application not in friend.shared_applications:
             friend.shared_applications.append(application)
             db.session.commit()
+
+            create_notification(
+                friend.id,
+                f"{user.name} shared a job application at {application.company} with you",
+                link=url_for('job_tracker'),
+                notification_type="application_shared"
+            )
             flash(f'Application shared with {friend.name}', 'success')
         else:
             flash('Application already shared with this friend', 'error')
@@ -549,3 +577,60 @@ def job_tracker():
         grouped=grouped,
         current_user=user
     )
+
+@app.route('/api/notifications', methods=['GET', 'POST'])
+def notifications():
+    if 'name' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = User.query.filter_by(name=session['name']).first()
+    
+    if request.method == 'GET':
+        # Get unread count for the navbar indicator
+        if request.args.get('count_only') == 'true':
+            unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+            return jsonify({'unread_count': unread_count})
+        
+        # Get notifications with pagination
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        notifications = Notification.query\
+            .filter_by(user_id=user.id)\
+            .order_by(Notification.created_at.desc())\
+            .paginate(page=page, per_page=per_page)
+        
+        result = {
+            'notifications': [{
+                'id': n.id,
+                'content': n.content,
+                'link': n.link,
+                'type': n.type,
+                'is_read': n.is_read,
+                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            } for n in notifications.items],
+            'has_next': notifications.has_next,
+            'total': notifications.total
+        }
+        
+        return jsonify(result)
+    
+    elif request.method == 'POST':
+        # Mark notifications as read
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if notification_ids:
+            # Mark specific notifications as read
+            Notification.query\
+                .filter(Notification.id.in_(notification_ids))\
+                .filter_by(user_id=user.id)\
+                .update({Notification.is_read: True}, synchronize_session=False)
+        else:
+            # Mark all as read if no IDs specified
+            Notification.query\
+                .filter_by(user_id=user.id, is_read=False)\
+                .update({Notification.is_read: True}, synchronize_session=False)
+        
+        db.session.commit()
+        return jsonify({'success': True})

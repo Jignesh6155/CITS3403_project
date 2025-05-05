@@ -92,3 +92,15 @@ class FriendRequest(db.Model):
     # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_requests', lazy='dynamic'))
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref=db.backref('received_requests', lazy='dynamic'))
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.String(255), nullable=False)
+    link = db.Column(db.String(255), nullable=True)  
+    type = db.Column(db.String(50), nullable=False)  # e.g., 'friend_request', 'job_application_update', etc.
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationship to the user
+    user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))
