@@ -9,6 +9,7 @@ shared_applications = db.Table('shared_applications',
     db.Column('job_application_id', db.Integer, db.ForeignKey('job_application.id'), primary_key=True)
 )
 
+# Association table for user friendships
 friendships = db.Table('friendships',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('friend_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
@@ -20,12 +21,6 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     # Relationships
-    friends = db.relationship('User', 
-                              secondary='friendships',
-                              primaryjoin='User.id==friendships.c.user_id',
-                              secondaryjoin='User.id==friendships.c.friend_id',
-                              backref=db.backref('befriended_by', lazy='dynamic'),
-                              lazy='dynamic')
     job_applications = db.relationship('JobApplication', backref='owner', lazy=True)
     job_searches = db.relationship('JobSearch', backref='user', lazy=True)
     scraped_jobs = db.relationship('ScrapedJob', backref='user', lazy=True)
@@ -33,6 +28,15 @@ class User(db.Model):
         'JobApplication',
         secondary=shared_applications,
         backref=db.backref('shared_with', lazy='dynamic')
+    )
+    # Friends relationship (self-referential many-to-many)
+    friends = db.relationship(
+        'User',
+        secondary=friendships,
+        primaryjoin=(friendships.c.user_id == id),
+        secondaryjoin=(friendships.c.friend_id == id),
+        backref=db.backref('friend_of', lazy='dynamic'),
+        lazy='dynamic'
     )
 
 class JobApplication(db.Model):

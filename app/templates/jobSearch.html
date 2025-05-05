@@ -137,7 +137,7 @@
       <!-- Scraped Jobs Results -->
       <div class="mt-8">
         <h3 class="text-sm font-semibold text-indigo-700 mb-2"></h3>
-        <div id="scraped-jobs-window" style="max-height: 400px; overflow-y: auto;">
+        <div id="scraped-jobs-window" style="max-height: calc(100vh - 350px); overflow-y: auto;">
           <ul id="scraped-jobs-list" class="space-y-4 text-sm">
             <!-- JS will populate this -->
           </ul>
@@ -163,11 +163,13 @@
       <div class="mt-6">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Keywords Found:</h3>
         <div class="flex flex-wrap gap-2 text-sm">
-          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Python</span>
-          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Machine Learning</span>
-          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Data Analysis</span>
-          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Leadership</span>
-          <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Communication</span>
+          {% if resume_keywords %}
+            {% for kw in resume_keywords %}
+              <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">{{ kw }}</span>
+            {% endfor %}
+          {% else %}
+            <span class="text-gray-400">No keywords found.</span>
+          {% endif %}
         </div>
       </div>
 
@@ -175,14 +177,17 @@
       <div class="mt-6">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Suggested Jobs:</h3>
         <ul class="space-y-3 text-sm">
-          <li class="flex items-center gap-2 bg-indigo-50 p-3 rounded-md">
-            <i data-lucide="briefcase" class="w-5 h-5 text-indigo-600"></i>
-            <span>Frontend Developer @ Placeholder Inc.</span>
-          </li>
-          <li class="flex items-center gap-2 bg-indigo-50 p-3 rounded-md">
-            <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
-            <span>Data Analyst @ ExampleCorp</span>
-          </li>
+          {% if suggested_jobs %}
+            {% for job in suggested_jobs %}
+              <li class="flex items-center gap-2 bg-indigo-50 p-3 rounded-md">
+                <i data-lucide="briefcase" class="w-5 h-5 text-indigo-600"></i>
+                <span>{{ job.title }}{% if job.company %} @ {{ job.company }}{% endif %}</span>
+                <a href="{{ job.link }}" target="_blank" class="ml-auto text-indigo-600 hover:underline text-xs">View</a>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="text-gray-400">No suggested jobs found.</li>
+          {% endif %}
         </ul>
       </div>
     </section>

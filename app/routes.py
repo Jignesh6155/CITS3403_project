@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
-from app.models import db, User
+from app.models import db, User, JobApplication
 from app.models import ScrapedJob
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
@@ -9,12 +9,12 @@ import threading
 import queue
 import time
 from app.utils.fuzzy_search import job_matches
-
+from app.utils import resume_processor
+import datetime
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = True  # Set to False temporarily for debugging
 SCRAPE_SIZE = 1
-
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
     with app.app_context():
@@ -80,17 +80,14 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
             'status': 'complete'
         })
         print(f"[DEBUG] Scraping complete, sent completion message to queue")
-
 @app.route("/")
 def home():
     return render_template("index.html")
-
 @app.route("/signup", methods=["POST"])
 def signup():
     name = request.form.get("name")
     email = request.form.get("email")
     password = request.form.get("password")
-
     if name and email and password:
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
@@ -101,12 +98,10 @@ def signup():
         session["name"] = name
         return redirect(url_for("dashboard"))
     return render_template("index.html", error="All fields are required.")
-
 @app.route("/signin", methods=["POST"])
 def signin():
     email = request.form.get("email")
     password = request.form.get("password")
-
     if email and password:
         user = User.query.filter_by(email=email, password=password).first()
         if user:
@@ -115,18 +110,85 @@ def signin():
         else:
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
-
 @app.route("/dashboard")
 def dashboard():
-    name = session.get("name", "User")
-    return render_template("dashboard.html", name=name)
-
+    if 'name' not in session:
+        return redirect(url_for("home"))
+    user = User.query.filter_by(name=session["name"]).first()
+    if not user:
+        return redirect(url_for("home"))
+    applications = JobApplication.query.filter_by(owner=user).all()
+    all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
+    status_counts_dict = {status: 0 for status in all_statuses}
+    company_counts = {}
+    last_applied_raw = None
+    for app in applications:
+        if app.status in status_counts_dict:
+            status_counts_dict[app.status] += 1
+        if app.date_applied:
+            if not last_applied_raw or app.date_applied > last_applied_raw:
+                last_applied_raw = app.date_applied
+    last_applied = last_applied_raw.strftime("%Y-%m-%d") if last_applied_raw else "N/A"
+    status_labels = []
+    status_counts = []
+    for status, count in status_counts_dict.items():
+        if count > 0:
+            status_labels.append(status)
+            status_counts.append(count)
+    status_summary = list(zip(status_labels, status_counts))
+    applied = status_counts_dict["Applied"]
+    saved = status_counts_dict["Saved"]
+    interviewing = status_counts_dict["Interviewing"]
+    offers = status_counts_dict["Offer"]
+    in_progress = sum(status_counts_dict[s] for s in all_statuses if s not in ["Accepted", "Archived", "Discontinued"])
+    inactive_statuses = {"Accepted", "Archived", "Discontinued"}
+    active_applications = [app for app in applications if app.status not in inactive_statuses]
+    active_count = len(active_applications)
+    achievements = []
+    if applied >= 1:
+        achievements.append(("First Application Sent", "You're on your way!", "green"))
+    if interviewing >= 1:
+        achievements.append(("First Interview!", "Nailed the first impression!", "blue"))
+    if offers >= 1:
+        achievements.append(("Offer Received", "You got the bag!", "yellow"))
+    if applied >= 10:
+        achievements.append(("Application Hustler", "10+ applications sent!", "purple"))
+    if offers >= 3:
+        achievements.append(("Multi-Offer Champ", "3+ offers received!", "orange"))
+    if interviewing >= 5:
+        achievements.append(("Interview Veteran", "5 interviews done!", "blue"))
+    if saved >= 5:
+        achievements.append(("Job Curator", "Saved 5 jobs to consider!", "cyan"))
+    if saved >= 15:
+        achievements.append(("Opportunity Hoarder", "15 jobs saved!", "pink"))
+    if in_progress >= 10:
+        achievements.append(("On the Grind", "10 ongoing applications!", "lime"))
+    if status_counts_dict["Archived"] >= 1:
+        achievements.append(("Archived Veteran", "At least 1 role archived.", "gray"))
+    if status_counts_dict["Accepted"] >= 1:
+        achievements.append(("You're Hired!", "Accepted an offer!", "emerald"))
+    if status_counts_dict["Discontinued"] >= 1:
+        achievements.append(("No Longer Pursuing", "Moved on from a role.", "rose"))
+    badges_earned = len(achievements)
+    return render_template("dashboard.html",
+        name=user.name,
+        in_progress=in_progress,
+        interviews=interviewing,
+        applied=applied,
+        saved=saved,
+        offers=offers,
+        last_applied=last_applied,
+        status_labels=status_labels,
+        status_counts=status_counts,
+        status_summary=status_summary,
+        active_count=active_count,
+        badges_earned=badges_earned,
+        achievements=achievements
+    )
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
-
-
 @app.route("/job-search")
 def job_search():
     scraped_jobs = ScrapedJob.query.all()
@@ -136,31 +198,66 @@ def job_search():
         except Exception:
             job.about_company_parsed = None
         job.company = job.about_company_parsed[0] if job.about_company_parsed and len(job.about_company_parsed) > 0 else ""
-    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs)
-
+    resume_keywords = session.pop('resume_keywords', [])
+    suggested_jobs = session.pop('suggested_jobs', [])
+    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
 @app.route("/analytics")
 def analytics():
     return render_template("analytics.html", active_page="analytics")
-
 @app.route("/comms")
 def comms():
     if 'name' not in session:
         return redirect(url_for('home'))
-    
+
     user = User.query.filter_by(name=session['name']).first()
-    return render_template("comms.html", active_page="comms", current_user=user)
+
+    # Prevent chart crash by passing empty data
+    return render_template("comms.html", active_page="comms", current_user=user, chart_data={})
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
-    if f:
-        return render_template("jobSearch.html", uploaded=True, filename=f.filename, active_page="job-search")
-    return render_template("jobSearch.html", uploaded=False, active_page="job-search")
-
-@app.route("/job-tracker")
-def job_tracker():
-    return render_template("jobtracker.html", active_page="job-tracker")
-
+    if f and f.filename:
+        print("[DEBUG] Processing uploaded resume with AI")
+        filename = f.filename
+        content_type = f.content_type or f.mimetype or ''
+        file_bytes = f.read()
+        text = resume_processor.extract_text(file_bytes, content_type)
+        # Get AI-suggested job titles (keywords)
+        job_titles = resume_processor.extract_keywords_openai(text)
+        print("[DEBUG] Extracted keywords:", job_titles)
+        # Find up to 5 jobs that fuzzy match any keyword
+        from app.models import ScrapedJob
+        import json
+        all_jobs = ScrapedJob.query.all()
+        print("[DEBUG] Number of jobs in DB:", len(all_jobs))
+        suggestions = []
+        for job in all_jobs:
+            for keyword in job_titles:
+                if job_matches(job, search=keyword, location='', job_type='', category='', confidence=0.35):
+                    print("[DEBUG] Found job that matches keyword:", job.title)
+                    try:
+                        about = json.loads(job.about_company) if job.about_company else []
+                    except Exception:
+                        about = []
+                    suggestions.append({
+                        'title': job.title,
+                        'company': about[0] if about else '',
+                        'posted_date': job.posted_date,
+                        'closing_in': job.closing_in,
+                        'link': job.link,
+                    })
+                    break  # Only add each job once
+            if len(suggestions) >= 5:
+                break
+        session['resume_keywords'] = job_titles
+        session['suggested_jobs'] = suggestions
+        return redirect(url_for('job_search'))
+    # If no file, clear session and redirect
+    session['resume_keywords'] = []
+    session['suggested_jobs'] = []
+    return redirect(url_for('job_search'))
 @app.route("/api/scraped-jobs")
 def api_scraped_jobs():
     # Get query params
@@ -170,11 +267,9 @@ def api_scraped_jobs():
     category = request.args.get('category', '').strip().lower()
     offset = int(request.args.get('offset', 0))
     limit = int(request.args.get('limit', 10))
-
     # Query all jobs
     jobs_query = ScrapedJob.query
     jobs = jobs_query.all()
-
     filtered = [job for job in jobs if job_matches(job, search, location, job_type, category)]
     total = len(filtered)
     paginated = filtered[offset:offset+limit]
@@ -196,7 +291,6 @@ def api_scraped_jobs():
         'jobs': result,
         'has_more': offset+limit < total
     })
-
 @app.route('/api/start-scraping', methods=['POST'])
 def api_start_scraping():
     try:
@@ -218,7 +312,6 @@ def api_start_scraping():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
 @app.route('/api/scraping-stream')
 def api_scraping_stream():
     def event_stream():
@@ -236,7 +329,6 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
-
 @app.route('/add-friend', methods=['POST'])
 def add_friend():
     if 'name' not in session:
@@ -257,3 +349,46 @@ def add_friend():
     
     return redirect(url_for('comms'))
 
+@app.route("/add-application", methods=["POST"])
+def add_application():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return redirect(url_for('home'))
+    company = request.form.get("company")
+    title = request.form.get("title")
+    date_applied = request.form.get("date_applied")
+    status = request.form.get("status")
+    application = JobApplication(
+        company=company,
+        title=title,
+        status=status,
+        date_applied=datetime.datetime.strptime(date_applied, "%Y-%m-%d"),
+        owner=user
+    )
+    db.session.add(application)
+    db.session.commit()
+    return redirect(url_for("job_tracker"))
+
+@app.route("/update-job-status", methods=["POST"])
+def update_job_status():
+    job_id = request.json.get("job_id")
+    new_status = request.json.get("new_status")
+    job = JobApplication.query.get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    job.status = new_status
+    db.session.commit()
+    return jsonify({"message": "Status updated"})
+@app.route("/job-tracker")
+def job_tracker():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    user = User.query.filter_by(name=session['name']).first()
+    applications = JobApplication.query.filter_by(owner=user).all()
+    statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
+    grouped = {status: [] for status in statuses}
+    for app in applications:
+        grouped[app.status].append(app)
+    return render_template("jobtracker.html", active_page="job-tracker", grouped=grouped)

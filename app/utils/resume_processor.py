@@ -3,33 +3,22 @@ import docx2txt
 import re
 import json
 from collections import Counter
+import openai
+from app.utils.fuzzy_search import job_matches
+from app.models import ScrapedJob
+import io
+import os
 
-# Common job-related keywords to look for
-COMMON_SKILLS = [
-    # Programming languages
-    "python", "java", "javascript", "c++", "c#", "ruby", "php", "swift", "kotlin", "go", "rust",
-    # Web technologies
-    "html", "css", "react", "angular", "vue", "node.js", "express", "django", "flask", "spring",
-    # Database
-    "sql", "mysql", "postgresql", "mongodb", "firebase", "oracle", "nosql", "redis",
-    # Cloud
-    "aws", "azure", "gcp", "cloud", "docker", "kubernetes", "terraform", "devops",
-    # Data science
-    "machine learning", "data analysis", "tensorflow", "pytorch", "pandas", "numpy", "data science",
-    "statistics", "r", "tableau", "power bi", "data visualization", "big data", "hadoop", "spark",
-    # Soft skills
-    "communication", "teamwork", "leadership", "problem solving", "critical thinking",
-    "time management", "creativity", "adaptability", "project management", "agile", "scrum",
-    # Design
-    "ui", "ux", "user interface", "user experience", "figma", "sketch", "adobe", "photoshop",
-    "illustrator", "xd", "indesign", "graphic design",
-    # Business
-    "marketing", "sales", "business analysis", "product management", "strategy", "operations"
-]
+OPENAI_MODEL = "gpt-3.5-turbo"
+
+# You may want to move the API key to a config file or environment variable
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def extract_text_from_pdf(file_stream):
     """Extract text from a PDF file."""
     try:
+        if isinstance(file_stream, bytes):
+            file_stream = io.BytesIO(file_stream)
         reader = PyPDF2.PdfReader(file_stream)
         text = ""
         for page in reader.pages:
@@ -42,6 +31,8 @@ def extract_text_from_pdf(file_stream):
 def extract_text_from_docx(file_stream):
     """Extract text from a DOCX file."""
     try:
+        if isinstance(file_stream, bytes):
+            file_stream = io.BytesIO(file_stream)
         text = docx2txt.process(file_stream)
         return text
     except Exception as e:
@@ -56,67 +47,41 @@ def extract_text(file_stream, content_type):
         return extract_text_from_docx(file_stream)
     return ""
 
-def extract_keywords(text):
-    """Extract keywords from resume text."""
-    # Clean the text
-    text = text.lower()
-    
-    # Extract keywords that match our skills list
-    found_keywords = []
-    for skill in COMMON_SKILLS:
-        if re.search(r'\b' + re.escape(skill) + r'\b', text):
-            found_keywords.append(skill)
-    
-    # Count frequency of each keyword
-    word_counts = Counter(found_keywords)
-    
-    # Return the top 10 keywords
-    return [kw for kw, _ in word_counts.most_common(10)]
-
-def find_suggested_jobs(keywords, scraped_jobs, max_suggestions=5):
-    """Find jobs that match the extracted keywords."""
-    job_matches = []
-    
-    for job in scraped_jobs:
-        match_score = 0
-        job_text = ""
-        
-        # Combine all relevant job fields into a single text
-        if job.title:
-            job_text += job.title + " "
-        if job.ai_summary:
-            job_text += job.ai_summary + " "
-        if job.full_text:
-            job_text += job.full_text + " "
-            
-        # Add structured data if available
-        for field in ['overview', 'responsibilities', 'requirements', 'skills_and_qualities']:
-            try:
-                field_data = getattr(job, field)
-                if field_data:
-                    field_list = json.loads(field_data)
-                    job_text += " ".join(field_list) + " "
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        
-        job_text = job_text.lower()
-        
-        # Calculate match score based on keyword presence
-        for keyword in keywords:
-            if re.search(r'\b' + re.escape(keyword) + r'\b', job_text):
-                match_score += 1
-        
-        if match_score > 0:
-            job_matches.append({
-                'id': job.id,
-                'title': job.title,
-                'company': getattr(job, 'company', ''),
-                'score': match_score,
-                'link': job.link
-            })
-    
-    # Sort by match score (descending)
-    job_matches.sort(key=lambda x: x['score'], reverse=True)
-    
-    # Return top matches
-    return job_matches[:max_suggestions] 
+def extract_keywords_openai(text, direction=None, model=None, api_key=None):
+    model = model or OPENAI_MODEL
+    api_key = api_key or OPENAI_API_KEY
+    client = openai.OpenAI(api_key=api_key)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful career advisor AI. "
+                "When given a resume, you suggest job titles that fit the candidate's university studies. "
+                "Only output job titles as instructed."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                "Based on the following resume text, suggest exactly 6 real-world job titles that would be a good fit for this candidate. The last one should one word and very general such as 'engineering', 'software' or 'consulting'. "
+                "Each job title should be a real job title (max 3 words each), and ONLY contain letters and spaces, no numbers or special characters. "
+                "Output only a comma-separated list of job titles, with no explanation or extra text.\n\n"
+                f"{text}"
+            )
+        }
+    ]
+    print("[DEBUG] Sending to OpenAI chat:", json.dumps(messages, indent=2))
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=50 
+    )
+    print("[DEBUG] Received from OpenAI chat:", response.choices[0].message.content.strip())
+    keywords_str = response.choices[0].message.content.strip()
+    # Try to split by comma first
+    keywords = [kw.strip() for kw in keywords_str.split(",") if kw.strip()]
+    # If only one keyword and it looks like a numbered list, split by regex
+    if len(keywords) == 1 and re.search(r"\d+\. ", keywords[0]):
+        keywords = re.split(r"\d+\. ?", keywords[0])
+        keywords = [kw.strip() for kw in keywords if kw.strip()]
+    return keywords

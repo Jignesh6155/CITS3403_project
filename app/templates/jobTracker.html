@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% set active_page = "job-tracker" %}
-
 {% block title %}Job Tracker Board{% endblock %}
-
 {% block content %}
 <div class="flex-1 flex flex-col overflow-hidden">
   <!-- HEADER -->
@@ -12,7 +10,6 @@
       + Add Application
     </button>
   </header>
-
   <!-- SEARCH BAR -->
   <div class="p-4 flex flex-wrap gap-4 bg-white shadow-md rounded-lg mb-6">
     <input type="text" id="searchInput" placeholder="Search for roles or companies" class="border rounded-lg px-4 py-2 flex-1" />
@@ -25,7 +22,6 @@
       <option>Status</option>
     </select>
   </div>
-
   <!-- TABLE -->
   <main class="flex-1 overflow-x-auto p-4 bg-white rounded-lg shadow-md">
     <table class="min-w-full table-fixed">
@@ -45,24 +41,30 @@
         <tr>
           {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
           <td id="{{ column }}" ondragover="event.preventDefault()" ondrop="onDrop(event, '{{ column }}')" class="border h-40 align-top p-2">
-            <!-- Job entries will be dropped here -->
+            {% for job in grouped[column] %}
+              <div id="job-{{ job.id }}" draggable="true" ondragstart="onDragStart(event)" class="bg-indigo-50 p-4 rounded-lg shadow mb-2 relative cursor-move">
+                <button onclick="deleteJob('job-{{ job.id }}')" class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
+                <p class="font-semibold text-indigo-800">{{ job.company }}</p>
+                <p class="text-gray-600">{{ job.title }}</p>
+                <p class="text-gray-400 text-sm">{{ job.date_applied.strftime('%Y-%m-%d') }}</p>
+              </div>
+            {% endfor %}
           </td>
           {% endfor %}
         </tr>
       </tbody>
     </table>
   </main>
-
   <!-- MODAL -->
   <div id="modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
     <div class="bg-white p-8 rounded-lg w-full max-w-md relative">
       <button id="closeModal" class="absolute top-4 right-6 text-gray-500 hover:text-black text-2xl">&times;</button>
       <h2 class="text-2xl font-bold text-indigo-900 mb-6 text-center">Add Application</h2>
-      <form id="applicationForm" class="flex flex-col gap-4">
-        <input id="companyName" type="text" placeholder="Company Name" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <input id="jobTitle" type="text" placeholder="Job Title" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <input id="dateApplied" type="date" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
-        <select id="status" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
+      <form method="POST" action="{{ url_for('add_application') }}" class="flex flex-col gap-4">
+        <input id="companyName" name="company" type="text" placeholder="Company Name" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="jobTitle" name="title" type="text" placeholder="Job Title" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <input id="dateApplied" name="date_applied" type="date" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300" />
+        <select id="status" name="status" required class="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300">
           <option value="" disabled selected>Select Status</option>
           <option>Saved</option>
           <option>Applied</option>
@@ -81,7 +83,6 @@
   </div>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
 // OPEN/CLOSE MODAL
@@ -89,7 +90,6 @@ const modal = document.getElementById('modal');
 document.getElementById('openModal').onclick = () => modal.classList.remove('hidden');
 document.getElementById('closeModal').onclick = () => modal.classList.add('hidden');
 window.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); }
-
 // DRAG LOGIC
 function onDragStart(event) {
   event.dataTransfer.setData("text/plain", event.target.id);
@@ -98,6 +98,23 @@ function onDrop(event, columnId) {
   const id = event.dataTransfer.getData("text/plain");
   const jobBox = document.getElementById(id);
   document.getElementById(columnId).appendChild(jobBox);
+  // Persist the new status to the backend
+  const jobId = id.replace("job-", ""); // assumes job id is in DOM id (e.g., job-123)
+  
+  fetch("/update-job-status", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      job_id: jobId,
+      new_status: columnId,
+    }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.error("Failed to update job status.");
+    }
+  });
 }
 
 // DELETE JOB
@@ -107,40 +124,33 @@ function deleteJob(id) {
     job.remove();
   }
 }
-
 // SUBMIT FORM
 document.getElementById('applicationForm').onsubmit = function(e) {
   e.preventDefault();
-
   const company = document.getElementById('companyName').value;
   const title = document.getElementById('jobTitle').value;
   const date = document.getElementById('dateApplied').value;
   const status = document.getElementById('status').value;
-
   const newId = 'job-' + Date.now();
   const div = document.createElement('div');
   div.id = newId;
   div.setAttribute('draggable', 'true');
   div.setAttribute('ondragstart', 'onDragStart(event)');
   div.className = "bg-indigo-50 p-4 rounded-lg shadow mb-2 relative cursor-move";
-
   div.innerHTML = 
     `<button onclick="deleteJob('${newId}')" class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
     <p class="font-semibold text-indigo-800">${company}</p>
     <p class="text-gray-600">${title}</p>
     <p class="text-gray-400 text-sm">${date}</p>`;
-
   document.getElementById(status).appendChild(div);
   modal.classList.add('hidden');
   this.reset();
 };
-
 // SIMPLE SEARCH
 const searchInput = document.getElementById("searchInput");
 searchInput.addEventListener("input", function() {
   const filter = this.value.toLowerCase();
   const jobs = document.querySelectorAll("td > div");
-
   jobs.forEach(job => {
     const text = job.innerText.toLowerCase();
     job.parentElement.style.display = text.includes(filter) ? "" : "none";

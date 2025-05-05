@@ -8,6 +8,19 @@
   <h1 class="text-xl font-semibold text-indigo-900">Career Climb Arena</h1>
 </header>
 
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="px-6 py-2">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} bg-{{ 'red' if category == 'error' else 'green' }}-100 border border-{{ 'red' if category == 'error' else 'green' }}-400 text-{{ 'red' if category == 'error' else 'green' }}-700 px-4 py-3 rounded relative mb-2" role="alert">
+          <span class="block sm:inline">{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
 <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-y-auto">
 
   <!-- Friends Management (Top Left) -->
@@ -25,105 +38,79 @@
   </ul>
 </section>
 
-  <!-- Leaderboard (Top Right) -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 lg:col-span-1">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h2>
-    <ul class="space-y-3 text-sm">
-      <li class="bg-indigo-50 px-4 py-3 rounded-md flex justify-between">
-        <span>🏆 <strong>You</strong> — 120 apps</span>
+<!-- Leaderboard (Top Right) -->
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 lg:col-span-1">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h2>
+  <ul class="space-y-3 text-sm">
+    {% for entry in leaderboard_data %}
+      <li class="{% if entry.is_current_user %}bg-indigo-50{% else %}bg-gray-50{% endif %} px-4 py-3 rounded-md flex justify-between">
+        <span>
+          {% if entry.rank == 1 %}🏆{% elif entry.rank == 2 %}🥈{% elif entry.rank == 3 %}🥉{% else %}{{ entry.rank }}.{% endif %}
+          <strong>{% if entry.is_current_user %}You{% else %}{{ entry.name }}{% endif %}</strong> — {{ entry.apps_count }} apps
+        </span>
       </li>
-      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
-        <span>💼 <strong>Jane</strong> — 115 apps</span>
-      </li>
-      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
-        <span>🚀 <strong>John</strong> — 110 apps</span>
-      </li>
-      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
-        <span>🎯 <strong>Alex</strong> — 105 apps</span>
-      </li>
-      <li class="bg-gray-50 px-4 py-3 rounded-md flex justify-between">
-        <span>🌟 <strong>Emily</strong> — 100 apps</span>
-      </li>
-    </ul>
-  </section>
+    {% endfor %}
+    {% if not leaderboard_data %}
+      <li class="text-gray-400">No data available yet.</li>
+    {% endif %}
+  </ul>
+</section>
 
   <!-- Shared Applications (Center Big) -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2 lg:col-span-2">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2 lg:col-span-2">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
 
-    <!-- Filters -->
-    <div class="flex flex-wrap gap-4 mb-4">
-      <input type="text" placeholder="Search Company" class="border rounded px-3 py-2 text-sm flex-1" />
-      <select class="border rounded px-3 py-2 text-sm">
-        <option>Filter by Job Type</option>
-        <option>Internship</option>
-        <option>Full-Time</option>
-      </select>
-      <select class="border rounded px-3 py-2 text-sm">
-        <option>Sort by Date</option>
-        <option>Newest</option>
-        <option>Oldest</option>
-      </select>
-    </div>
+  <!-- Filters -->
+  <div class="flex flex-wrap gap-4 mb-4">
+    <input type="text" placeholder="Search Company" class="border rounded px-3 py-2 text-sm flex-1" />
+    <select class="border rounded px-3 py-2 text-sm">
+      <option>Filter by Job Type</option>
+      <option>Internship</option>
+      <option>Full-Time</option>
+    </select>
+    <select class="border rounded px-3 py-2 text-sm">
+      <option>Sort by Date</option>
+      <option>Newest</option>
+      <option>Oldest</option>
+    </select>
+  </div>
 
-    <!-- Shared Apps List -->
-    <ul class="space-y-3">
+  <!-- Shared Apps List -->
+<ul class="space-y-3" id="shared-apps-list">
+  {% if shared_apps %}
+    {% for app in shared_apps %}
       <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
         <div>
-          <p class="font-semibold">Google - Software Engineer</p>
-          <p class="text-gray-500 text-sm">Shared by Jane | 2025-03-21</p>
+          <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
+          <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
         </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
+        <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
       </li>
-      <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
-        <div>
-          <p class="font-semibold">Amazon - Cloud Support</p>
-          <p class="text-gray-500 text-sm">Shared by John | 2025-03-19</p>
-        </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
-      </li>
-      <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
-        <div>
-          <p class="font-semibold">Meta - Data Analyst</p>
-          <p class="text-gray-500 text-sm">Shared by Alex | 2025-03-18</p>
-        </div>
-        <button class="bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded">Save</button>
-      </li>
-    </ul>
-  </section>
+    {% endfor %}
+  {% else %}
+    <li class="text-gray-400 text-center py-4">No applications have been shared with you yet.</li>
+  {% endif %}
+</ul>
+</section>
 
-  <!-- Stat Graphs (Bottom Full Width) -->
-  <section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Stats</h2>
-    <canvas id="comparisonChart" height="100"></canvas>
-  </section>
+<!-- Stat Graphs (Bottom Full Width) -->
+<section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Stats</h2>
+  <canvas id="comparisonChart" height="100"></canvas>
+</section>
 
 </main>
 
+<!-- Chart.js (load once) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if chart_data %}
 <script>
+  const chartData = JSON.parse('{{ chart_data|tojson|safe }}');
+
   new Chart(document.getElementById('comparisonChart'), {
     type: 'bar',
-    data: {
-      labels: ['Apps Sent', 'Interviews', 'Offers'],
-      datasets: [
-        {
-          label: 'You',
-          data: [42, 11, 3],
-          backgroundColor: 'rgba(99, 102, 241, 0.7)'
-        },
-        {
-          label: 'Jane',
-          data: [40, 10, 2],
-          backgroundColor: 'rgba(34, 197, 94, 0.7)'
-        },
-        {
-          label: 'John',
-          data: [30, 9, 1],
-          backgroundColor: 'rgba(234, 179, 8, 0.7)'
-        }
-      ]
-    },
+    data: chartData,
     options: {
       responsive: true,
       plugins: {
@@ -134,5 +121,41 @@
       }
     }
   });
+</script>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const sharedAppsList = document.getElementById('shared-apps-list');
+  if (sharedAppsList) {
+    sharedAppsList.addEventListener('click', function (e) {
+      if (e.target.classList.contains('save-app-btn')) {
+        const appId = e.target.getAttribute('data-app-id');
+        saveApplication(appId);
+      }
+    });
+  }
+});
+
+function saveApplication(appId) {
+  fetch(`/save-shared-application/${appId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Application saved to your tracker!');
+      } else {
+        alert(data.error || 'Failed to save application');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to save application');
+    });
+}
 </script>
 {% endblock %}
