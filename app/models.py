@@ -70,6 +70,9 @@ class ScrapedJob(db.Model):
     full_text = db.Column(db.Text)
     link = db.Column(db.String(512))
     source = db.Column(db.String(120))
+    tag_location = db.Column(db.String(120))
+    tag_jobtype = db.Column(db.String(120))
+    tag_category = db.Column(db.String(120))
 
 class ResumeAnalysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -243,38 +243,139 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-// --- Job Search/Filter Logic using Backend API ---
+// Initialize variables and constants outside DOMContentLoaded
 const PAGE_SIZE = 10;
 let currentPage = 1;
 let hasMore = true;
 let jobs = [];
 let isScrapingActive = false;
 
-// Get UI elements
-const searchInput = document.querySelector('input[placeholder="Search for roles, companies, or locations"]');
-const searchButton = document.getElementById('start-scraping-btn');
-const scrapingLoader = document.getElementById('scraping-loader');
-const locationSelect = document.querySelectorAll('select')[0];
-const typeSelect = document.querySelectorAll('select')[1];
-const categorySelect = document.querySelectorAll('select')[2];
-const jobsList = document.getElementById('scraped-jobs-list');
-const jobsWindow = document.getElementById('scraped-jobs-window');
-
-function getFilterValue(select, defaultText) {
-  const val = select.value;
-  return (val && val !== defaultText) ? val : '';
-}
-
-function renderJobs(jobsArr, append = false) {
-  if (!append) jobsList.innerHTML = '';
-  if (jobsArr.length === 0 && !append) {
-    jobsList.innerHTML = '<li class="text-gray-400">No jobs found.</li>';
-    return;
+// Add these style classes at the start of your script
+const FILTER_STYLES = {
+  location: {
+    active: 'bg-blue-50 text-blue-800 border-blue-300',
+    hover: 'hover:bg-blue-100'
+  },
+  jobtype: {
+    active: 'bg-green-50 text-green-800 border-green-300',
+    hover: 'hover:bg-green-100'
+  },
+  category: {
+    active: 'bg-purple-50 text-purple-800 border-purple-300',
+    hover: 'hover:bg-purple-100'
   }
-  jobsArr.forEach(job => {
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Get UI elements
+  const searchInput = document.querySelector('input[placeholder="Search for roles, companies, or locations"]');
+  const searchButton = document.getElementById('start-scraping-btn');
+  const scrapingLoader = document.getElementById('scraping-loader');
+  const locationSelect = document.querySelectorAll('select')[0];
+  const typeSelect = document.querySelectorAll('select')[1];
+  const categorySelect = document.querySelectorAll('select')[2];
+  const jobsList = document.getElementById('scraped-jobs-list');
+  const jobsWindow = document.getElementById('scraped-jobs-window');
+
+  // Update the select elements' base styles
+  locationSelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.location.hover}`;
+  typeSelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.jobtype.hover}`;
+  categorySelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.category.hover}`;
+
+  function updateFilterStyle(select, type) {
+    const styles = FILTER_STYLES[type];
+    if (select.value && select.value !== select.options[0].text) {
+      select.className = `border rounded-md px-3 py-2 ${styles.active}`;
+    } else {
+      select.className = `border rounded-md px-3 py-2 ${styles.hover}`;
+    }
+  }
+
+  function getFilterValue(select, defaultText) {
+    const val = select.value;
+    return (val && val !== select.options[0].text) ? val : '';
+  }
+
+  function renderJobTags(tags) {
+    if (!tags) return '';
+    
+    const tagElements = [];
+    
+    if (tags.location) {
+      tagElements.push(`
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200" 
+              onclick="setSelectValue(locationSelect, '${tags.location}')">
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          ${tags.location}
+        </span>
+      `);
+    }
+    
+    if (tags.jobtype) {
+      tagElements.push(`
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 cursor-pointer hover:bg-green-200"
+              onclick="setSelectValue(typeSelect, '${tags.jobtype}')">
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          ${tags.jobtype}
+        </span>
+      `);
+    }
+    
+    if (tags.category) {
+      tagElements.push(`
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200"
+              onclick="setSelectValue(categorySelect, '${tags.category}')">
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+          ${tags.category}
+        </span>
+      `);
+    }
+    
+    return tagElements.length ? `
+      <div class="flex flex-wrap gap-2 mt-2">
+        ${tagElements.join('')}
+      </div>
+    ` : '';
+  }
+
+  function renderJobs(jobsArr, append = false) {
+    if (!append) jobsList.innerHTML = '';
+    if (jobsArr.length === 0 && !append) {
+      jobsList.innerHTML = '<li class="text-gray-400">No jobs found.</li>';
+      return;
+    }
+    
+    jobsArr.forEach(job => {
+      const li = document.createElement('li');
+      li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
+      
+      li.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span class="font-semibold">${job.title}</span>
+          ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
+        </div>
+        ${job.closing_in && job.closing_in !== 'n/a' ? `<div class="text-red-600 text-xs mt-1">Closing: ${job.closing_in}</div>` : ''}
+        ${job.company ? `<div class="text-gray-600 text-xs mt-1">Company: ${job.company}</div>` : ''}
+        <p class="text-gray-700 mt-2">${job.ai_summary}</p>
+        ${renderJobTags(job.tags)}
+        <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
+      `;
+      
+      jobsList.appendChild(li);
+    });
+  }
+
+  function addJobLive(job) {
     const li = document.createElement('li');
     li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
+    
     li.innerHTML = `
       <div class="flex justify-between items-center">
         <span class="font-semibold">${job.title}</span>
@@ -283,192 +384,195 @@ function renderJobs(jobsArr, append = false) {
       ${job.closing_in && job.closing_in !== 'n/a' ? `<div class="text-red-600 text-xs mt-1">Closing: ${job.closing_in}</div>` : ''}
       ${job.company ? `<div class="text-gray-600 text-xs mt-1">Company: ${job.company}</div>` : ''}
       <p class="text-gray-700 mt-2">${job.ai_summary}</p>
+      ${renderJobTags(job.tags)}
       <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
     `;
-    jobsList.appendChild(li);
-  });
-}
-
-function addJobLive(job) {
-  // Add a new job to the top of the list live
-  console.log('Rendering job live:', job);
-  const li = document.createElement('li');
-  li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
-  li.innerHTML = `
-    <div class="flex justify-between items-center">
-      <span class="font-semibold">${job.title}</span>
-      ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
-    </div>
-    ${job.closing_in && job.closing_in !== 'n/a' ? `<div class="text-red-600 text-xs mt-1">Closing: ${job.closing_in}</div>` : ''}
-    ${job.company ? `<div class="text-gray-600 text-xs mt-1">Company: ${job.company}</div>` : ''}
-    <p class="text-gray-700 mt-2">${job.ai_summary}</p>
-    <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
-  `;
-  jobsList.insertBefore(li, jobsList.firstChild);
-}
-
-function fetchJobs(reset = true) {
-  if (reset) {
-    currentPage = 1;
-    jobs = [];
-    hasMore = true;
-    jobsList.innerHTML = '<li class="text-gray-400">Loading...</li>';
+    
+    jobsList.insertBefore(li, jobsList.firstChild);
   }
-  const params = new URLSearchParams({
-    search: searchInput.value.trim(),
-    location: getFilterValue(locationSelect, 'Location'),
-    type: getFilterValue(typeSelect, 'Opportunity Type'),
-    category: getFilterValue(categorySelect, 'Category'),
-    offset: (currentPage - 1) * PAGE_SIZE,
-    limit: PAGE_SIZE
-  });
-  fetch(`/api/scraped-jobs?${params.toString()}`)
-    .then(res => res.json())
-    .then(data => {
-      hasMore = data.has_more;
-      if (reset) {
-        jobs = data.jobs;
-        renderJobs(jobs);
-      } else {
-        jobs = jobs.concat(data.jobs);
-        renderJobs(data.jobs, true);
-      }
-    })
-    .catch(() => {
-      jobsList.innerHTML = '<li class="text-red-400">Failed to load jobs.</li>';
-    });
-}
 
-// Event listeners
-searchInput.addEventListener('input', () => fetchJobs());
-searchButton.addEventListener('click', function(e) {
-  e.preventDefault();
-  const jobtype = getFilterValue(typeSelect, 'Opportunity Type').toLowerCase() || 'internships';
-  const discipline = getFilterValue(categorySelect, 'Category').toLowerCase() || undefined;
-  const location = getFilterValue(locationSelect, 'Location').toLowerCase() || undefined;
-  const keyword = searchInput.value.trim();
-  
-  // Show loader
-  scrapingLoader.classList.remove('hidden');
-  isScrapingActive = true;
-  
-  // Debug logging for frontend values
-  console.log('Selected values:', { jobtype, discipline, location, keyword });
-  
-  console.log('Start Scraping button clicked with:', { jobtype, discipline, location, keyword });
-  fetch('/api/start-scraping', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobtype, discipline, location, keyword })
-  })
-    .then(res => {
-      console.log('POST /api/start-scraping response:', res.status);
-    })
-    .catch(err => {
-      console.error('Error sending POST /api/start-scraping:', err);
-    });
-});
-locationSelect.addEventListener('change', () => fetchJobs());
-typeSelect.addEventListener('change', () => fetchJobs());
-categorySelect.addEventListener('change', () => fetchJobs());
-
-// Infinite Scroll
-jobsWindow.addEventListener('scroll', function() {
-  if (jobsWindow.scrollTop + jobsWindow.clientHeight >= jobsWindow.scrollHeight - 50) {
-    if (hasMore) {
-      currentPage++;
-      fetchJobs(false);
+  function fetchJobs(reset = true) {
+    if (reset) {
+      currentPage = 1;
+      jobs = [];
+      hasMore = true;
+      jobsList.innerHTML = '<li class="text-gray-400">Loading...</li>';
     }
+
+    const params = new URLSearchParams({
+      search: searchInput.value.trim(),
+      location: getFilterValue(locationSelect, 'Location'),
+      type: getFilterValue(typeSelect, 'Opportunity Type'),
+      category: getFilterValue(categorySelect, 'Category'),
+      offset: (currentPage - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE
+    });
+
+    console.log('Fetching jobs with params:', params.toString());
+
+    fetch(`/api/scraped-jobs?${params.toString()}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        console.log('Received jobs data:', data);
+        hasMore = data.has_more;
+        if (reset) {
+          jobs = data.jobs;
+          renderJobs(jobs);
+        } else {
+          jobs = jobs.concat(data.jobs);
+          renderJobs(data.jobs, true);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching jobs:', error);
+        jobsList.innerHTML = '<li class="text-red-400">Failed to load jobs. Please try again.</li>';
+      });
   }
-});
 
-// Listen for live job updates via SSE
-if (!!window.EventSource) {
-  console.log('Opening SSE connection to /api/scraping-stream');
-  const sse = new EventSource('/api/scraping-stream');
-  sse.onopen = function() {
-    console.log('SSE connection opened');
-  };
-  sse.onerror = function(e) {
-    console.error('SSE error:', e);
-    // Hide loader on error
-    if (isScrapingActive) {
-      scrapingLoader.classList.add('hidden');
-      isScrapingActive = false;
-    }
-  };
-  sse.onmessage = function(event) {
-    console.log('SSE job received:', event.data);
-    try {
-      const data = JSON.parse(event.data);
-      
-      // Check if this is a ping or control message
-      if (data.type === 'ping') {
-        console.log('Received ping from server');
-        return;
-      }
-      
-      // Check if this is a control message for scraping status
-      if (data.status === 'complete') {
-        console.log('Scraping complete, hiding loader');
-        // Hide loader when scraping is complete
+  // Event listeners
+  searchInput.addEventListener('input', () => fetchJobs());
+  searchButton.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (isScrapingActive) return;
+
+    const jobtype = getFilterValue(typeSelect, 'Opportunity Type').toLowerCase() || 'internships';
+    const discipline = getFilterValue(categorySelect, 'Category').toLowerCase();
+    const location = getFilterValue(locationSelect, 'Location').toLowerCase();
+    const keyword = searchInput.value.trim();
+    
+    scrapingLoader.classList.remove('hidden');
+    isScrapingActive = true;
+    
+    jobsList.innerHTML = '<li class="text-gray-400">Starting new search...</li>';
+    
+    fetch('/api/start-scraping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobtype, discipline, location, keyword })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        console.log('Scraping started successfully');
+      })
+      .catch(err => {
+        console.error('Error sending POST /api/start-scraping:', err);
         scrapingLoader.classList.add('hidden');
         isScrapingActive = false;
-        return;
+        jobsList.innerHTML = '<li class="text-red-400">Failed to start search. Please try again.</li>';
+      });
+  });
+
+  locationSelect.addEventListener('change', () => {
+    updateFilterStyle(locationSelect, 'location');
+    fetchJobs();
+  });
+  typeSelect.addEventListener('change', () => {
+    updateFilterStyle(typeSelect, 'jobtype');
+    fetchJobs();
+  });
+  categorySelect.addEventListener('change', () => {
+    updateFilterStyle(categorySelect, 'category');
+    fetchJobs();
+  });
+
+  // Infinite Scroll
+  jobsWindow.addEventListener('scroll', function() {
+    if (jobsWindow.scrollTop + jobsWindow.clientHeight >= jobsWindow.scrollHeight - 50) {
+      if (hasMore && !isScrapingActive) {
+        currentPage++;
+        fetchJobs(false);
       }
-      
-      // Otherwise treat as a job
-      addJobLive(data);
-    } catch (err) {
-      console.error('Error parsing SSE data:', err);
-    }
-  };
-}
-
-// Initial fetch
-fetchJobs();
-
-// Resume upload drag-and-drop and file name display
-const dropArea = document.getElementById('resume-drop-area');
-const fileInput = document.getElementById('resume-input');
-const fileNameSpan = document.getElementById('resume-filename');
-
-// Click to open file dialog
-if (dropArea && fileInput) {
-  dropArea.addEventListener('click', function(e) {
-    if (e.target === fileInput) return;
-    fileInput.click();
-  });
-  // Show file name
-  fileInput.addEventListener('change', function() {
-    if (fileInput.files.length > 0) {
-      fileNameSpan.textContent = fileInput.files[0].name;
-    } else {
-      fileNameSpan.textContent = '';
     }
   });
-  // Drag and drop
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropArea.addEventListener(eventName, e => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropArea.classList.add('border-indigo-400', 'bg-indigo-50');
+
+  // Listen for live job updates via SSE
+  if (!!window.EventSource) {
+    console.log('Opening SSE connection to /api/scraping-stream');
+    const sse = new EventSource('/api/scraping-stream');
+    
+    sse.onmessage = function(event) {
+      console.log('SSE job received:', event.data);
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'ping') {
+          console.log('Received ping from server');
+          return;
+        }
+        
+        if (data.status === 'complete') {
+          console.log('Scraping complete, hiding loader');
+          scrapingLoader.classList.add('hidden');
+          isScrapingActive = false;
+          fetchJobs();
+          return;
+        }
+        
+        addJobLive(data);
+        
+      } catch (error) {
+        console.error('Error processing SSE message:', error);
+      }
+    };
+    
+    sse.onerror = function(error) {
+      console.error('SSE connection error:', error);
+      scrapingLoader.classList.add('hidden');
+      isScrapingActive = false;
+    };
+  }
+
+  // Resume upload drag-and-drop and file name display
+  const dropArea = document.getElementById('resume-drop-area');
+  const fileInput = document.getElementById('resume-input');
+  const fileNameSpan = document.getElementById('resume-filename');
+
+  if (dropArea && fileInput) {
+    dropArea.addEventListener('click', function(e) {
+      if (e.target === fileInput) return;
+      fileInput.click();
     });
-  });
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropArea.addEventListener(eventName, e => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropArea.classList.remove('border-indigo-400', 'bg-indigo-50');
+
+    fileInput.addEventListener('change', function() {
+      if (fileInput.files.length > 0) {
+        fileNameSpan.textContent = fileInput.files[0].name;
+      } else {
+        fileNameSpan.textContent = '';
+      }
     });
-  });
-  dropArea.addEventListener('drop', e => {
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      fileInput.files = e.dataTransfer.files;
-      fileNameSpan.textContent = fileInput.files[0].name;
-    }
-  });
-}
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropArea.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropArea.classList.add('border-indigo-400', 'bg-indigo-50');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropArea.classList.remove('border-indigo-400', 'bg-indigo-50');
+      });
+    });
+
+    dropArea.addEventListener('drop', e => {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        fileNameSpan.textContent = fileInput.files[0].name;
+      }
+    });
+  }
+
+  // Initialize page styles and fetch initial jobs
+  updateFilterStyle(locationSelect, 'location');
+  updateFilterStyle(typeSelect, 'jobtype');
+  updateFilterStyle(categorySelect, 'category');
+  fetchJobs();
 });
 </script>
 {% endblock %}
