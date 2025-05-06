@@ -10,8 +10,9 @@ import queue
 import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
-# Add after existing imports
+import string
 from datetime import datetime, timedelta
+
 
 # Simple in-memory rate limiting
 request_counts = {}
@@ -229,6 +230,11 @@ def logout():
     return redirect(url_for("home"))
 @app.route("/job-search")
 def job_search():
+    if 'name' not in session:
+        return redirect(url_for('home'))
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return redirect(url_for('home'))
     scraped_jobs = ScrapedJob.query.all()
     for job in scraped_jobs:
         try:
@@ -278,6 +284,8 @@ def upload():
         text = resume_processor.extract_text(file_bytes, content_type)
         # Get AI-suggested job titles (keywords)
         job_titles = resume_processor.extract_keywords_openai(text)
+        job_titles = [kw.strip().strip(string.punctuation) for kw in job_titles if kw.strip()]
+
         print("[DEBUG] Extracted keywords:", job_titles)
         # Find up to 5 jobs that fuzzy match any keyword
         from app.models import ScrapedJob
@@ -301,7 +309,7 @@ def upload():
                         'link': job.link,
                     })
                     break  # Only add each job once
-            if len(suggestions) >= 5:
+            if len(suggestions) >= 20:
                 break
         session['resume_keywords'] = job_titles
         session['suggested_jobs'] = suggestions
