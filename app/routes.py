@@ -10,7 +10,6 @@ import queue
 import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
-import datetime
 # Add after existing imports
 from datetime import datetime, timedelta
 
@@ -504,7 +503,7 @@ def add_application():
         company=company,
         title=title,
         status=status,
-        date_applied=datetime.datetime.strptime(date_applied, "%Y-%m-%d"),
+        date_applied=datetime.strptime(date_applied, "%Y-%m-%d"),
         owner=user
     )
     db.session.add(application)
