@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% set active_page = "comms" %}
+{% set active_page = "friends" %}
 
-{% block title %}Career Climb Arena{% endblock %}
+{% block title %}Friends{% endblock %}
 
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Career Climb Arena</h1>
+  <h1 class="text-xl font-semibold text-indigo-900">Friends</h1>
 </header>
 
 <!-- Flash Messages -->
@@ -21,7 +21,7 @@
   {% endif %}
 {% endwith %}
 
-<main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-y-auto">
+<main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
 
 <!-- Friends Management -->
 <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
@@ -71,7 +71,7 @@
 </section>
 
   <!-- Leaderboard -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 lg:col-span-1">
+  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Leaderboard</h2>
     <ul class="space-y-3 text-sm">
       {% for entry in leaderboard_data %}
@@ -89,21 +89,17 @@
   </section>
 
   <!-- Shared Applications -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2 lg:col-span-2">
+  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
 
     <!-- Filters -->
     <div class="flex flex-wrap gap-4 mb-4">
       <input type="text" placeholder="Search Company" class="border rounded px-3 py-2 text-sm flex-1" />
       <select class="border rounded px-3 py-2 text-sm">
-        <option>Filter by Job Type</option>
-        <option>Internship</option>
-        <option>Full-Time</option>
-      </select>
-      <select class="border rounded px-3 py-2 text-sm">
-        <option>Sort by Date</option>
-        <option>Newest</option>
-        <option>Oldest</option>
+        <option>Filter by Status</option>
+        <option>Applied</option>
+        <option>Interview</option>
+        <option>Offer</option>
       </select>
     </div>
 
@@ -127,36 +123,7 @@
     </div>
   </section>
 
-  <!-- Career Stats Chart -->
-  <section class="col-span-4 bg-white border border-gray-200 p-6 shadow rounded-lg">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Career Stats</h2>
-    <canvas id="comparisonChart" height="100"></canvas>
-  </section>
-
 </main>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-{% if chart_data %}
-<script>
-  const chartData = JSON.parse('{{ chart_data|tojson|safe }}');
-
-  new Chart(document.getElementById('comparisonChart'), {
-    type: 'bar',
-    data: chartData,
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' }
-      },
-      scales: {
-        y: { beginAtZero: true }
-      }
-    }
-  });
-</script>
-{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

@@ -248,30 +248,55 @@ def job_search():
 @app.route("/analytics")
 def analytics():
     return render_template("analytics.html", active_page="analytics")
-@app.route("/comms")
-def comms():
+# Update the friends route in routes.py to include leaderboard data
+
+@app.route("/friends")
+def friends():
     if 'name' not in session:
         return redirect(url_for('home'))
 
-    user = User.query.filter_by(name=session['name']).first()
+    current_user = User.query.filter_by(name=session['name']).first()
 
-    # ✅ Get all JobApplications where the current user is in shared_with
+    # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
-        .filter(JobApplication.shared_with.any(id=user.id)) \
+        .filter(JobApplication.shared_with.any(id=current_user.id)) \
         .all()
     
     # Get pending friend requests
     pending_requests = FriendRequest.query.filter_by(
-        receiver_id=user.id, status='pending'
+        receiver_id=current_user.id, status='pending'
     ).all()
 
+    # Generate leaderboard data
+    # First get the current user and all their friends
+    friends_and_self = [current_user] + current_user.friends.all()
+    
+    # Create the leaderboard data with application counts
+    leaderboard_data = []
+    for idx, user in enumerate(friends_and_self):
+        # Count applications for this user
+        app_count = JobApplication.query.filter_by(owner_id=user.id).count()
+        
+        leaderboard_data.append({
+            'name': user.name,
+            'apps_count': app_count,
+            'is_current_user': user.id == current_user.id
+        })
+    
+    # Sort by application count (descending)
+    leaderboard_data.sort(key=lambda x: x['apps_count'], reverse=True)
+    
+    # Add rank to each entry
+    for idx, entry in enumerate(leaderboard_data):
+        entry['rank'] = idx + 1
+
     return render_template(
-        "comms.html",
-        active_page="comms",
-        current_user=user,
+        "friends.html",
+        active_page="friends",
+        current_user=current_user,
         shared_apps=shared_apps,
         pending_requests=pending_requests,
-        chart_data={}
+        leaderboard_data=leaderboard_data
     )
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -401,22 +426,22 @@ def send_friend_request():
         # Rate limiting
         if not rate_limit_check(current_user.id, 'friend_request', max_requests=10, window_seconds=3600):
             flash('You have sent too many friend requests. Please try again later.', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
             
         friend = User.query.filter_by(email=email).first()
         
         if not friend:
             flash('User not found', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
             
         if friend.id == current_user.id:
             flash('You cannot send a friend request to yourself', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
             
         # Check if already friends
         if friend in current_user.friends:
             flash('You are already friends with this user', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
             
         # Check if request already exists
         existing_request = FriendRequest.query.filter_by(
@@ -425,7 +450,7 @@ def send_friend_request():
         
         if existing_request:
             flash('Friend request already sent', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
             
         # Check if there's a request from the other user
         existing_reverse_request = FriendRequest.query.filter_by(
@@ -440,7 +465,7 @@ def send_friend_request():
             friend.friends.append(current_user)
             db.session.commit()
             flash(f'You are now friends with {friend.name}', 'success')
-            return redirect(url_for('comms'))
+            return redirect(url_for('friends'))
         
         # Create a new request
         new_request = FriendRequest(
@@ -454,7 +479,7 @@ def send_friend_request():
         create_notification(
             friend.id, 
             f"{current_user.name} sent you a friend request", 
-            link=url_for('comms'), 
+            link=url_for('friends'), 
             notification_type="friend_request"
         )
 
@@ -463,7 +488,7 @@ def send_friend_request():
     else:
         flash('Please enter an email', 'error')
         
-    return redirect(url_for('comms'))
+    return redirect(url_for('friends'))
 @app.route('/handle-friend-request/<int:request_id>', methods=['POST'])
 def handle_friend_request(request_id):
     if 'name' not in session:
@@ -475,7 +500,7 @@ def handle_friend_request(request_id):
     # Security checks
     if not friend_request or friend_request.receiver_id != current_user.id:
         flash('Invalid request', 'error')
-        return redirect(url_for('comms'))
+        return redirect(url_for('friends'))
         
     action = request.form.get('action')
     
@@ -495,7 +520,7 @@ def handle_friend_request(request_id):
         db.session.commit()
         flash('Friend request rejected', 'success')
     
-    return redirect(url_for('comms'))
+    return redirect(url_for('friends'))
 @app.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
@@ -517,6 +542,9 @@ def add_application():
     db.session.add(application)
     db.session.commit()
     return redirect(url_for("job_tracker"))
+
+# Find and modify the share_application route in routes.py
+# Change the link parameter in create_notification function call
 
 @app.route('/share-application/<int:app_id>', methods=['POST'])
 def share_application(app_id):
@@ -541,7 +569,7 @@ def share_application(app_id):
             create_notification(
                 friend.id,
                 f"{user.name} shared a job application at {application.company} with you",
-                link=url_for('job_tracker'),
+                link=url_for('friends'),  # CHANGED: Now links to friends page instead of job_tracker
                 notification_type="application_shared"
             )
             flash(f'Application shared with {friend.name}', 'success')
@@ -551,7 +579,6 @@ def share_application(app_id):
         flash('Friend not found', 'error')
 
     return redirect(url_for('job_tracker'))
-
 @app.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
