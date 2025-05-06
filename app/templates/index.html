@@ -7,14 +7,45 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script defer>
+    // Global flag to toggle dummy users feature
+    const SHOW_DUMMY_USERS = true; // true for testing, false for production
+
+    // Dummy user data
+    const dummyUsers = [
+      { name: 'Adriaan', email: 'Adriaan@example.com', password: 'password123' },
+      { name: 'Jignesh', email: 'Jignesh@example.com', password: 'password123' },
+      { name: 'Rishi', email: 'Rishi@example.com', password: 'password123' }
+    ];
+
     function showLogin() {
       document.getElementById('login-form').classList.remove('translate-x-full');
       document.getElementById('login-form').classList.add('translate-x-0');
     }
+
     function hideLogin() {
       document.getElementById('login-form').classList.remove('translate-x-0');
       document.getElementById('login-form').classList.add('translate-x-full');
     }
+
+    function fillLoginForm(email, password) {
+      const loginForm = document.getElementById('login-form');
+      loginForm.querySelector('input[name="email"]').value = email;
+      loginForm.querySelector('input[name="password"]').value = password;
+    }
+
+    function fillSignupForm(name, email, password) {
+      const signupForm = document.getElementById('right-panel');
+      signupForm.querySelector('input[name="name"]').value = name;
+      signupForm.querySelector('input[name="email"]').value = email;
+      signupForm.querySelector('input[name="password"]').value = password;
+    }
+
+    // Initialize dummy users dropdown when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!SHOW_DUMMY_USERS) {
+        document.querySelectorAll('.dummy-users-section').forEach(el => el.style.display = 'none');
+      }
+    });
   </script>
 </head>
 
@@ -37,6 +68,18 @@
     <div id="right-panel"
          class="w-1/2 flex flex-col justify-center items-center p-10">
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Create Account</h2>
+      
+      <!-- Dummy users dropdown for signup -->
+      <div class="dummy-users-section w-full mb-4">
+        <select onchange="const selectedUser = dummyUsers[this.value]; if(selectedUser) fillSignupForm(selectedUser.name, selectedUser.email, selectedUser.password);" 
+                class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
+          <option value="">-- Test User --</option>
+          <option value="0">Adriaan</option>
+          <option value="1">Jignesh</option>
+          <option value="2">Rishi</option>
+        </select>
+      </div>
+
       <form action="{{ url_for('signup') }}" method="POST" class="w-full flex flex-col gap-4">
         <input type="text" name="name" placeholder="Name" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
         <input type="email" name="email" placeholder="Email address" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
@@ -53,6 +96,17 @@
       
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Sign In</h2>
       
+      <!-- Dummy users dropdown for login -->
+      <div class="dummy-users-section w-full mb-4">
+        <select onchange="const loginUser = dummyUsers[this.value]; if(loginUser) fillLoginForm(loginUser.email, loginUser.password);" 
+                class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
+          <option value="">-- Test User --</option>
+          <option value="0">Adriaan</option>
+          <option value="1">Jignesh</option>
+          <option value="2">Rishi</option>
+        </select>
+      </div>
+
       <form action="{{ url_for('signin') }}" method="POST" class="w-full flex flex-col gap-4">
         <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
         <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
