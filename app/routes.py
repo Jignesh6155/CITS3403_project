@@ -852,3 +852,46 @@ def delete_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+@app.route('/save-shared-application/<int:app_id>', methods=['POST'])
+def save_shared_application(app_id):
+    if 'name' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+        
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Get the original application
+    shared_app = JobApplication.query.get(app_id)
+    if not shared_app:
+        return jsonify({"error": "Application not found"}), 404
+        
+    # Check if the application is shared with the user
+    if user not in shared_app.shared_with:
+        return jsonify({"error": "Application not shared with you"}), 403
+
+    try:
+        # Create a new application for the current user
+        new_app = JobApplication(
+            title=shared_app.title,
+            company=shared_app.company,
+            location=shared_app.location,
+            job_type=shared_app.job_type,
+            closing_date=shared_app.closing_date,
+            status="Saved",  # Always start as Saved
+            user=user,
+            scraped_job_id=shared_app.scraped_job_id
+        )
+        
+        db.session.add(new_app)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Application saved to your tracker"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
