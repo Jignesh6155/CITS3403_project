@@ -12,6 +12,8 @@ from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
 import string
 from datetime import datetime, timedelta
+import pytz
+import re
 
 
 # Simple in-memory rate limiting
@@ -53,7 +55,7 @@ def create_notification(user_id, content, link=None, notification_type="general"
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
-SCRAPE_SIZE = 1
+SCRAPE_SIZE = 3
 
 
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
@@ -62,6 +64,9 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
         from app.models import db, ScrapedJob
         import json
+        from datetime import datetime, timedelta
+        import pytz
+        import re
         
         try:
             print(f"[DEBUG] Calling get_jobs_full with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
@@ -77,15 +82,32 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
             ).delete()
             db.session.commit()
             
+            perth_tz = pytz.timezone('Australia/Perth')
+            
             for i, job in enumerate(jobs):
                 try:
+                    closing_in = job.get("closing_in", "")
+                    closing_date = None
+                    
+                    # Extract days if present in closing_in
+                    if closing_in:
+                        days_match = re.search(r'(\d+)\s*days?', closing_in.lower())
+                        if days_match:
+                            days = int(days_match.group(1))
+                            # Calculate closing date in Perth timezone
+                            now = datetime.now(perth_tz)
+                            closing_date = now + timedelta(days=days)
+                            # Format closing_in consistently
+                            closing_in = f"Closing in {days} days"
+                    
                     # Save to DB
                     print(f"[DEBUG] Saving job {i+1}/{len(jobs)} to database: {job.get('title')}")
                     scraped_job = ScrapedJob(
                         user_id=user_id,
                         title=job.get("title"),
                         posted_date=job.get("posted_date"),
-                        closing_in=job.get("closing_in"),
+                        closing_in=closing_in,
+                        closing_date=closing_date,
                         ai_summary=job.get("ai_summary"),
                         overview=json.dumps(job.get("overview", [])),
                         responsibilities=json.dumps(job.get("responsibilities", [])),
@@ -110,7 +132,8 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                         'title': job.get("title"),
                         'company': about[0] if about else '',
                         'posted_date': job.get("posted_date"),
-                        'closing_in': job.get("closing_in"),
+                        'closing_in': closing_in,
+                        'closing_date': closing_date.strftime("%d %b %Y") if closing_date else None,
                         'ai_summary': job.get("ai_summary"),
                         'link': job.get("link"),
                         'tag_location': location,
@@ -403,6 +426,11 @@ def api_scraped_jobs():
             except Exception:
                 about = []
                 
+            # Format closing date if it exists
+            closing_date_str = None
+            if job.closing_date:
+                closing_date_str = job.closing_date.strftime("%d %b %Y")  # e.g., "14 Feb 2025"
+                
             # Format tags for display
             tags = {
                 'location': job.tag_location if job.tag_location else None,
@@ -415,6 +443,7 @@ def api_scraped_jobs():
                 'company': about[0] if about else '',
                 'posted_date': job.posted_date,
                 'closing_in': job.closing_in,
+                'closing_date': closing_date_str,
                 'ai_summary': job.ai_summary,
                 'link': job.link,
                 'tags': tags

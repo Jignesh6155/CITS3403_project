@@ -60,6 +60,7 @@ class ScrapedJob(db.Model):
     title = db.Column(db.String(255))
     posted_date = db.Column(db.String(64))
     closing_in = db.Column(db.String(64))
+    closing_date = db.Column(db.DateTime, nullable=True)  # New field for actual closing date
     ai_summary = db.Column(db.Text)
     overview = db.Column(db.Text)  # JSON stringified list
     responsibilities = db.Column(db.Text)  # JSON stringified list
