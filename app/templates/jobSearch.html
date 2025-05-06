@@ -251,7 +251,7 @@
 
 {% block scripts %}
 <script>
-// Initialize variables and constants outside DOMContentLoaded
+// Global variables and constants
 const PAGE_SIZE = 10;
 let currentPage = 1;
 let hasMore = true;
@@ -291,6 +291,54 @@ function setSelectValue(selectId, value) {
       select.dispatchEvent(new Event('change'));
     }
   }
+}
+
+// Add the saveJob function at global scope
+function saveJob(jobData) {
+  fetch('/add-application', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: jobData.title,
+      company: jobData.company,
+      location: jobData.tags?.location || '',
+      job_type: jobData.tags?.jobtype || '',
+      closing_date: jobData.closing_date,
+      status: 'Saved',
+      date_applied: new Date().toISOString().split('T')[0]
+    })
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      showToast('Job saved successfully!', 'success');
+    } else {
+      throw new Error(data.error || 'Failed to save job');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast(error.message || 'Failed to save job', 'error');
+  });
+}
+
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-opacity duration-300`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -388,7 +436,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const li = document.createElement('li');
       li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
       
-      // Create the closing information HTML if either closing_in or closing_date exists
       let closingHtml = '';
       if (job.closing_in || job.closing_date) {
         closingHtml = `
@@ -403,7 +450,15 @@ document.addEventListener('DOMContentLoaded', function() {
       li.innerHTML = `
         <div class="flex justify-between items-center">
           <span class="font-semibold">${job.title}</span>
-          ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
+          <div class="flex items-center gap-2">
+            ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
+            <button class="save-job-btn inline-flex items-center px-2.5 py-1.5 border border-indigo-500 text-xs font-medium rounded text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              </svg>
+              Save Job
+            </button>
+          </div>
         </div>
         ${job.company ? `<div class="text-gray-600 text-sm mt-1">Company: ${job.company}</div>` : ''}
         ${closingHtml}
@@ -411,6 +466,10 @@ document.addEventListener('DOMContentLoaded', function() {
         ${renderJobTags(job.tags)}
         <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
       `;
+
+      // Add click event listener to the save button
+      const saveButton = li.querySelector('.save-job-btn');
+      saveButton.addEventListener('click', () => saveJob(job));
       
       jobsList.appendChild(li);
     });
@@ -420,7 +479,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const li = document.createElement('li');
     li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
     
-    // Create the closing information HTML if either closing_in or closing_date exists
     let closingHtml = '';
     if (job.closing_in || job.closing_date) {
       closingHtml = `
@@ -435,7 +493,15 @@ document.addEventListener('DOMContentLoaded', function() {
     li.innerHTML = `
       <div class="flex justify-between items-center">
         <span class="font-semibold">${job.title}</span>
-        ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
+        <div class="flex items-center gap-2">
+          ${job.posted_date && job.posted_date !== 'n/a' ? `<span class="text-gray-400 text-xs">Posted: ${job.posted_date}</span>` : ''}
+          <button class="save-job-btn inline-flex items-center px-2.5 py-1.5 border border-indigo-500 text-xs font-medium rounded text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+            Save Job
+          </button>
+        </div>
       </div>
       ${job.company ? `<div class="text-gray-600 text-sm mt-1">Company: ${job.company}</div>` : ''}
       ${closingHtml}
@@ -443,6 +509,10 @@ document.addEventListener('DOMContentLoaded', function() {
       ${renderJobTags(job.tags)}
       <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
     `;
+
+    // Add click event listener to the save button
+    const saveButton = li.querySelector('.save-job-btn');
+    saveButton.addEventListener('click', () => saveJob(job));
     
     jobsList.insertBefore(li, jobsList.firstChild);
   }

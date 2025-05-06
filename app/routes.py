@@ -239,7 +239,7 @@ def dashboard():
     user = User.query.filter_by(name=session["name"]).first()
     if not user:
         return redirect(url_for("home"))
-    applications = JobApplication.query.filter_by(owner=user).all()
+    applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     status_counts_dict = {status: 0 for status in all_statuses}
     company_counts = {}
@@ -629,24 +629,79 @@ def handle_friend_request(request_id):
 @app.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return jsonify({"error": "Not logged in"}), 401
+        
     user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for('home'))
-    company = request.form.get("company")
-    title = request.form.get("title")
-    date_applied = request.form.get("date_applied")
-    status = request.form.get("status")
-    application = JobApplication(
-        company=company,
-        title=title,
-        status=status,
-        date_applied=datetime.strptime(date_applied, "%Y-%m-%d"),
-        owner=user
-    )
-    db.session.add(application)
-    db.session.commit()
-    return redirect(url_for("job_tracker"))
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        if request.is_json:
+            # Handle JSON request from job search page
+            data = request.get_json()
+            
+            # Parse the closing date if it exists
+            closing_date = None
+            if data.get('closing_date'):
+                try:
+                    closing_date = datetime.strptime(data['closing_date'], "%d %b %Y")
+                except ValueError:
+                    pass
+
+            application = JobApplication(
+                title=data['title'],
+                company=data['company'],
+                location=data.get('location'),
+                job_type=data.get('job_type'),
+                closing_date=closing_date,
+                status="Saved",
+                user=user,
+                scraped_job_id=data.get('scraped_job_id')
+            )
+        else:
+            # Handle form submission from job tracker page
+            application = JobApplication(
+                title=request.form['title'],
+                company=request.form['company'],
+                location=request.form.get('location'),
+                job_type=request.form.get('job_type'),
+                closing_date=datetime.strptime(request.form['closing_date'], "%Y-%m-%d") if request.form.get('closing_date') else None,
+                status=request.form.get('status', 'Saved'),
+                user=user
+            )
+
+        db.session.add(application)
+        db.session.commit()
+
+        if request.is_json:
+            return jsonify({"success": True})
+        return redirect(url_for("job_tracker"))
+
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({"error": str(e)}), 400
+        flash('Error adding application: ' + str(e), 'error')
+        return redirect(url_for("job_tracker"))
+
+@app.route('/api/job-applications', methods=['GET'])
+def get_applications():
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    applications = JobApplication.query.filter_by(user=current_user).all()
+    return jsonify([{
+        'id': app.id,
+        'title': app.title,
+        'company': app.company,
+        'location': app.location,
+        'job_type': app.job_type,
+        'closing_date': app.closing_date.strftime('%Y-%m-%d') if app.closing_date else None,
+        'status': app.status,
+        'date_applied': app.date_applied.strftime('%Y-%m-%d'),
+        'user_id': app.user_id,
+        'scraped_job_id': app.scraped_job_id
+    } for app in applications])
 
 @app.route('/share-application/<int:app_id>', methods=['POST'])
 def share_application(app_id):
@@ -656,7 +711,7 @@ def share_application(app_id):
     user = User.query.filter_by(name=session['name']).first()
     application = JobApplication.query.get(app_id)
 
-    if not application or application.owner_id != user.id:
+    if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
         return redirect(url_for('job_tracker'))
 
@@ -698,9 +753,11 @@ def job_tracker():
         return redirect(url_for('home'))
     
     user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return redirect(url_for('home'))
 
-    # 🚫 Only applications OWNED by the current user
-    applications = JobApplication.query.filter_by(owner_id=user.id).all()
+    # Only applications owned by the current user
+    applications = JobApplication.query.filter_by(user=user).all()
 
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     grouped = {status: [] for status in statuses}
@@ -712,7 +769,7 @@ def job_tracker():
         "jobtracker.html",
         active_page="job-tracker",
         grouped=grouped,
-        current_user=user
+        user=user
     )
 
 @app.route('/api/notifications', methods=['GET', 'POST'])
@@ -771,3 +828,27 @@ def notifications():
         
         db.session.commit()
         return jsonify({'success': True})
+
+@app.route("/delete-application/<int:job_id>", methods=["DELETE"])
+def delete_application(job_id):
+    if 'name' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+        
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    application = JobApplication.query.get(job_id)
+    if not application:
+        return jsonify({"error": "Application not found"}), 404
+        
+    if application.user_id != user.id:
+        return jsonify({"error": "Not authorized"}), 403
+
+    try:
+        db.session.delete(application)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

@@ -115,7 +115,7 @@
             <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
               <div>
                 <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
-                <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+                <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
               </div>
               <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
             </li>

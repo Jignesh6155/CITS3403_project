@@ -1,10 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
-import datetime
+from datetime import datetime, timedelta
+import pytz
 
 db = SQLAlchemy()
 
 # Association table for sharing job applications between users
-shared_applications = db.Table('shared_applications',
+application_shares = db.Table('application_shares',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('job_application_id', db.Integer, db.ForeignKey('job_application.id'), primary_key=True)
 )
@@ -21,12 +22,12 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     # Relationships
-    job_applications = db.relationship('JobApplication', backref='owner', lazy=True)
+    job_applications = db.relationship('JobApplication', backref='user', lazy=True)
     job_searches = db.relationship('JobSearch', backref='user', lazy=True)
     scraped_jobs = db.relationship('ScrapedJob', backref='user', lazy=True)
     shared_applications = db.relationship(
         'JobApplication',
-        secondary=shared_applications,
+        secondary=application_shares,
         backref=db.backref('shared_with', lazy='dynamic')
     )
     # Friends relationship (self-referential many-to-many)
@@ -41,12 +42,21 @@ class User(db.Model):
 
 class JobApplication(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    company = db.Column(db.String(120), nullable=False)
-    title = db.Column(db.String(120), nullable=False)
-    status = db.Column(db.String(50), nullable=False)
-    date_applied = db.Column(db.Date)
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # shared_with handled by association table
+    title = db.Column(db.String(100), nullable=False)
+    company = db.Column(db.String(100), nullable=False)
+    location = db.Column(db.String(100))
+    job_type = db.Column(db.String(100))
+    closing_date = db.Column(db.DateTime)
+    status = db.Column(db.String(20), nullable=False, default='Applied')
+    date_applied = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    scraped_job_id = db.Column(db.Integer, db.ForeignKey('scraped_job.id'))
+    
+    # Define the relationship to ScrapedJob only
+    scraped_job = db.relationship('ScrapedJob', backref=db.backref('applications', lazy=True))
+
+    def __repr__(self):
+        return f'<JobApplication {self.title} at {self.company}>'
 
 class JobSearch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,7 +90,7 @@ class ResumeAnalysis(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     filename = db.Column(db.String(255))
     content_type = db.Column(db.String(100))
-    upload_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     raw_text = db.Column(db.Text)
     keywords = db.Column(db.Text)  # JSON stringified list of extracted keywords
     suggested_jobs = db.Column(db.Text)  # JSON stringified list of job IDs
@@ -90,8 +100,8 @@ class FriendRequest(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_requests', lazy='dynamic'))
@@ -104,7 +114,7 @@ class Notification(db.Model):
     link = db.Column(db.String(255), nullable=True)  
     type = db.Column(db.String(50), nullable=False)  # e.g., 'friend_request', 'job_application_update', etc.
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship to the user
     user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))
