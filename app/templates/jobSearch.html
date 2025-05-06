@@ -92,10 +92,7 @@
         </div>
       </div>
       
-      
-      
-
-      <!-- Filters with Info Tooltip -->
+      <!-- Filters Section with Info Icon -->
       <div class="flex flex-wrap items-center gap-3 mb-6">
 
         <!-- Location Dropdown -->
@@ -113,8 +110,8 @@
           <option>Opportunity Type</option>
           <option>Internships</option>
           <option>Graduate-Jobs</option>
-          <option>scholarships</option>
-          <option>clerkships</option>
+          <option>Scholarships</option>
+          <option>Clerkships</option>
         </select>
 
         <!-- Category Dropdown -->
@@ -205,22 +202,27 @@
         </select>
 
         <!-- Info Icon with Tooltip -->
-        <div class="relative group">
+        <div class="relative flex items-center group">
           <button type="button" aria-label="Help">
-            <svg class="w-4 h-4 text-gray-400 hover:text-indigo-600 transition" xmlns="http://www.w3.org/2000/svg" fill="none"
+            <svg class="w-5 h-5 text-gray-400 hover:text-indigo-600 transition"
+                xmlns="http://www.w3.org/2000/svg" fill="none"
                 viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M13 16h-1v-4h-1m1-4h.01M12 20.5A8.5 8.5 0 103.5 12 8.5 8.5 0 0012 20.5z" />
             </svg>
           </button>
-          <div class="absolute hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-64 top-6 left-0 z-50">
+
+          <!-- Tooltip on Hover -->
+          <div class="absolute hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-64 top-7 left-0 z-50">
             <strong class="block mb-1 text-indigo-700">Using Job Filters</strong>
-            Use the dropdowns and search to filter jobs by <strong>Location</strong>, <strong>Opportunity Type</strong>, or <strong>Category</strong>.
-            <br><br> Click <strong>Search Web</strong> to scrape the internet for more listing using your current filters. <strong>Be patient</strong>, this may take a while.
+            Use the dropdowns and search bar to filter jobs by <strong>Location</strong>, <strong>Opportunity Type</strong>, or <strong>Category</strong>.
+            <br><br>
+            Click <strong>Search Web</strong> to scrape the internet for matching listings using your filters.
+            <strong>Be patient</strong>, this may take a moment.
           </div>
         </div>
-      </div>
 
+      </div>
 
 
       <!-- Scraped Jobs Results -->
