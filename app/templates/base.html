@@ -34,10 +34,11 @@
           <i data-lucide="bar-chart-3" class="w-6 h-6 {% if active_page=='analytics'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Analytics</span>
         </a>
-        <a href="{{ url_for('comms') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='comms'%}bg-gray-800{%endif%} hover:bg-gray-800">
-          <i data-lucide="messages-square" class="w-6 h-6 {% if active_page=='comms'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
-          <span class="hidden group-hover:inline-block whitespace-nowrap">Comms</span>
+        <a href="{{ url_for('friends') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='friends'%}bg-gray-800{%endif%} hover:bg-gray-800">
+          <i data-lucide="users" class="w-6 h-6 {% if active_page=='friends'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
+          <span class="hidden group-hover:inline-block whitespace-nowrap">Friends</span>
         </a>
+        
       </nav>
       <div class="flex-1"></div>
       
