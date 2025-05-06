@@ -45,7 +45,7 @@
                 <p class="text-gray-600">{{ job.title }}</p>
                 <p class="text-gray-400 text-sm">{{ job.date_applied.strftime('%Y-%m-%d') }}</p>
                 <!-- SHARE BUTTON -->
-                <button onclick="openShareModal({{ job.id }})"
+                <button onclick="openShareModal('{{ job.id }}')"
                   class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
                   Share
                 </button>

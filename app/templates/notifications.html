@@ -1,0 +1,22 @@
+<!-- Notification dropdown component -->
+<div class="relative" id="notification-bell">
+  <button id="notificationButton" class="relative p-1 text-gray-500 hover:text-indigo-600 focus:outline-none">
+    <i data-lucide="bell" class="w-5 h-5"></i>
+    <span id="notification-badge" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full hidden">0</span>
+  </button>
+  
+  <!-- Dropdown panel -->
+  <div id="notificationDropdown" class="absolute right-0 mt-2 bg-white rounded-md shadow-lg overflow-hidden z-20 w-80 max-h-96 overflow-y-auto hidden">
+    <div class="py-2 px-4 bg-indigo-50 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-sm font-semibold text-indigo-700">Notifications</h3>
+      <button id="markAllRead" class="text-xs text-indigo-600 hover:text-indigo-900">Mark all as read</button>
+    </div>
+    <div id="notificationList" class="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+      <!-- Notifications will be populated here -->
+      <div class="text-center py-8 text-gray-500 text-sm">Loading notifications...</div>
+    </div>
+    <div class="py-2 px-4 bg-gray-50 border-t border-gray-200 text-xs text-center text-gray-500">
+      <a href="#" id="loadMoreNotifications" class="text-indigo-600 hover:underline">Load more</a>
+    </div>
+  </div>
+</div>

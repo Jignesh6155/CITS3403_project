@@ -45,3 +45,37 @@
     @apply w-8 h-8 bg-gray-300 rounded-full;
   }
 }
+
+/* Notification styles */
+#notificationDropdown {
+  right: 0;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  border: 1px solid #e5e7eb;
+  z-index: 50;
+}
+
+#notificationList {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background-color: #f9fafb;
+}
+
+.notification-unread {
+  background-color: #eef2ff;
+}
+
+#notification-badge {
+  font-size: 0.65rem;
+  min-width: 18px;
+  height: 18px;
+}

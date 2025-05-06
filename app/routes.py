@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
-from app.models import db, User, JobApplication
+from app.models import db, User, JobApplication, FriendRequest, Notification
 from app.models import ScrapedJob
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
@@ -10,7 +10,45 @@ import queue
 import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
-import datetime
+# Add after existing imports
+from datetime import datetime, timedelta
+
+# Simple in-memory rate limiting
+request_counts = {}
+
+def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
+    """Basic rate limiting"""
+    key = f"{user_id}:{action}"
+    now = datetime.utcnow()
+    
+    if key not in request_counts:
+        request_counts[key] = []
+    
+    # Clean old requests
+    request_counts[key] = [t for t in request_counts[key] 
+                           if t > now - timedelta(seconds=window_seconds)]
+    
+    # Check if over limit
+    if len(request_counts[key]) >= max_requests:
+        return False
+    
+    # Add current request
+    request_counts[key].append(now)
+    return True
+
+def create_notification(user_id, content, link=None, notification_type="general"):
+    """Create a notification for a user"""
+    notification = Notification(
+        user_id=user_id,
+        content=content,
+        link=link,
+        type=notification_type,
+        is_read=False
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
+
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = True  # Set to False temporarily for debugging
@@ -215,15 +253,20 @@ def comms():
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
         .all()
+    
+    # Get pending friend requests
+    pending_requests = FriendRequest.query.filter_by(
+        receiver_id=user.id, status='pending'
+    ).all()
 
     return render_template(
         "comms.html",
         active_page="comms",
         current_user=user,
         shared_apps=shared_apps,
+        pending_requests=pending_requests,
         chart_data={}
     )
-
 @app.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
@@ -338,26 +381,113 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
-@app.route('/add-friend', methods=['POST'])
-def add_friend():
+@app.route('/send-friend-request', methods=['POST'])
+def send_friend_request():
     if 'name' not in session:
         return redirect(url_for('home'))
     
     email = request.form.get('email')
     if email:
-        friend = User.query.filter_by(email=email).first()
-        if friend:
-            user = User.query.filter_by(name=session['name']).first()
-            user.friends.append(friend)
-            db.session.commit()
+        current_user = User.query.filter_by(name=session['name']).first()
+        
+        # Rate limiting
+        if not rate_limit_check(current_user.id, 'friend_request', max_requests=10, window_seconds=3600):
+            flash('You have sent too many friend requests. Please try again later.', 'error')
             return redirect(url_for('comms'))
-        else:
+            
+        friend = User.query.filter_by(email=email).first()
+        
+        if not friend:
             flash('User not found', 'error')
+            return redirect(url_for('comms'))
+            
+        if friend.id == current_user.id:
+            flash('You cannot send a friend request to yourself', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if already friends
+        if friend in current_user.friends:
+            flash('You are already friends with this user', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if request already exists
+        existing_request = FriendRequest.query.filter_by(
+            sender_id=current_user.id, receiver_id=friend.id, status='pending'
+        ).first()
+        
+        if existing_request:
+            flash('Friend request already sent', 'error')
+            return redirect(url_for('comms'))
+            
+        # Check if there's a request from the other user
+        existing_reverse_request = FriendRequest.query.filter_by(
+            sender_id=friend.id, receiver_id=current_user.id, status='pending'
+        ).first()
+        
+        if existing_reverse_request:
+            # Auto-accept the other request
+            existing_reverse_request.status = 'accepted'
+            # Ensure bidirectional friendship
+            current_user.friends.append(friend)
+            friend.friends.append(current_user)
+            db.session.commit()
+            flash(f'You are now friends with {friend.name}', 'success')
+            return redirect(url_for('comms'))
+        
+        # Create a new request
+        new_request = FriendRequest(
+            sender_id=current_user.id,
+            receiver_id=friend.id,
+            status='pending'
+        )
+        db.session.add(new_request)
+        db.session.commit()
+
+        create_notification(
+            friend.id, 
+            f"{current_user.name} sent you a friend request", 
+            link=url_for('comms'), 
+            notification_type="friend_request"
+        )
+
+        
+        flash('Friend request sent', 'success')
     else:
         flash('Please enter an email', 'error')
+        
+    return redirect(url_for('comms'))
+@app.route('/handle-friend-request/<int:request_id>', methods=['POST'])
+def handle_friend_request(request_id):
+    if 'name' not in session:
+        return redirect(url_for('home'))
+        
+    current_user = User.query.filter_by(name=session['name']).first()
+    friend_request = FriendRequest.query.get(request_id)
+    
+    # Security checks
+    if not friend_request or friend_request.receiver_id != current_user.id:
+        flash('Invalid request', 'error')
+        return redirect(url_for('comms'))
+        
+    action = request.form.get('action')
+    
+    if action == 'accept':
+        friend_request.status = 'accepted'
+        # Add to friends (both ways)
+        sender = User.query.get(friend_request.sender_id)
+        
+        # Ensure bidirectional friendship
+        current_user.friends.append(sender)
+        sender.friends.append(current_user)
+        
+        db.session.commit()
+        flash(f'You are now friends with {sender.name}', 'success')
+    elif action == 'reject':
+        friend_request.status = 'rejected'
+        db.session.commit()
+        flash('Friend request rejected', 'success')
     
     return redirect(url_for('comms'))
-
 @app.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
@@ -373,7 +503,7 @@ def add_application():
         company=company,
         title=title,
         status=status,
-        date_applied=datetime.datetime.strptime(date_applied, "%Y-%m-%d"),
+        date_applied=datetime.strptime(date_applied, "%Y-%m-%d"),
         owner=user
     )
     db.session.add(application)
@@ -399,6 +529,13 @@ def share_application(app_id):
         if application not in friend.shared_applications:
             friend.shared_applications.append(application)
             db.session.commit()
+
+            create_notification(
+                friend.id,
+                f"{user.name} shared a job application at {application.company} with you",
+                link=url_for('job_tracker'),
+                notification_type="application_shared"
+            )
             flash(f'Application shared with {friend.name}', 'success')
         else:
             flash('Application already shared with this friend', 'error')
@@ -439,3 +576,60 @@ def job_tracker():
         grouped=grouped,
         current_user=user
     )
+
+@app.route('/api/notifications', methods=['GET', 'POST'])
+def notifications():
+    if 'name' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = User.query.filter_by(name=session['name']).first()
+    
+    if request.method == 'GET':
+        # Get unread count for the navbar indicator
+        if request.args.get('count_only') == 'true':
+            unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+            return jsonify({'unread_count': unread_count})
+        
+        # Get notifications with pagination
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        notifications = Notification.query\
+            .filter_by(user_id=user.id)\
+            .order_by(Notification.created_at.desc())\
+            .paginate(page=page, per_page=per_page)
+        
+        result = {
+            'notifications': [{
+                'id': n.id,
+                'content': n.content,
+                'link': n.link,
+                'type': n.type,
+                'is_read': n.is_read,
+                'created_at': n.created_at.isoformat() + 'Z'  # Return ISO format with UTC timezone
+            } for n in notifications.items],
+            'has_next': notifications.has_next,
+            'total': notifications.total
+        }
+        
+        return jsonify(result)
+    
+    elif request.method == 'POST':
+        # Mark notifications as read
+        data = request.get_json()
+        notification_ids = data.get('notification_ids', [])
+        
+        if notification_ids:
+            # Mark specific notifications as read
+            Notification.query\
+                .filter(Notification.id.in_(notification_ids))\
+                .filter_by(user_id=user.id)\
+                .update({Notification.is_read: True}, synchronize_session=False)
+        else:
+            # Mark all as read if no IDs specified
+            Notification.query\
+                .filter_by(user_id=user.id, is_read=False)\
+                .update({Notification.is_read: True}, synchronize_session=False)
+        
+        db.session.commit()
+        return jsonify({'success': True})
