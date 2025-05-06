@@ -1,7 +1,14 @@
 import json
 import difflib
 
-def job_matches(job, search='', location='', job_type='', category='', confidence=0.5):
+# NEW: Utility for fuzzy string matching
+def is_fuzzy_match(needle, haystack, threshold=0.6):
+    return (
+        needle in haystack or
+        difflib.SequenceMatcher(None, needle, haystack).ratio() > threshold
+    )
+
+def job_matches(job, search='', location='', job_type='', category='', confidence=0.6):  # mode removed
     title = (job.title or '').lower()
     company = ''
     ai_summary = (job.ai_summary or '').lower()
@@ -11,6 +18,7 @@ def job_matches(job, search='', location='', job_type='', category='', confidenc
     skills_and_qualities = ''
     salary_info = ''
     about_company = ''
+    
     try:
         overview = ' '.join(json.loads(job.overview) if job.overview else []).lower()
         responsibilities = ' '.join(json.loads(job.responsibilities) if job.responsibilities else []).lower()
@@ -23,12 +31,17 @@ def job_matches(job, search='', location='', job_type='', category='', confidenc
             company = about[0].lower()
     except Exception:
         pass
+
     full_text = (job.full_text or '').lower()
-    loc_match = location in full_text if location else True
-    type_match = job_type in full_text if job_type else True
-    cat_match = category in full_text if category else True
+
+    # NEW: Apply fuzzy match to dropdown fields
+    loc_match = is_fuzzy_match(location, full_text, threshold=confidence) if location else True
+    type_match = is_fuzzy_match(job_type, full_text, threshold=confidence) if job_type else True
+    cat_match = is_fuzzy_match(category, full_text, threshold=confidence) if category else True
+
     search_match = True
     if search:
+        search = search.lower()
         search_match = (
             difflib.SequenceMatcher(None, search, title).ratio() > confidence or
             difflib.SequenceMatcher(None, search, company).ratio() > confidence or
@@ -44,4 +57,5 @@ def job_matches(job, search='', location='', job_type='', category='', confidenc
             search in responsibilities or search in requirements or search in skills_and_qualities or
             search in salary_info or search in about_company or search in full_text
         )
-    return loc_match and type_match and cat_match and search_match 
+
+    return loc_match and type_match and cat_match and search_match

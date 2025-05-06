@@ -95,8 +95,10 @@
       
       
 
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 mb-6">
+      <!-- Filters with Info Tooltip -->
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+
+        <!-- Location Dropdown -->
         <select class="border rounded-md px-3 py-2">
           <option>Location</option>
           <option>Perth</option>
@@ -105,6 +107,8 @@
           <option>Remote</option>
           <option>Hong-Kong</option>
         </select>
+
+        <!-- Opportunity Type Dropdown -->
         <select class="border rounded-md px-3 py-2">
           <option>Opportunity Type</option>
           <option>Internships</option>
@@ -112,6 +116,8 @@
           <option>scholarships</option>
           <option>clerkships</option>
         </select>
+
+        <!-- Category Dropdown -->
         <select class="border rounded-md px-3 py-2">
           <option>Category</option>
           <option>accounting</option>
@@ -196,9 +202,25 @@
           <option>telecommunications</option>
           <option>transport</option>
           <option>utilities</option>
-
         </select>
+
+        <!-- Info Icon with Tooltip -->
+        <div class="relative group">
+          <button type="button" aria-label="Help">
+            <svg class="w-4 h-4 text-gray-400 hover:text-indigo-600 transition" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M12 20.5A8.5 8.5 0 103.5 12 8.5 8.5 0 0012 20.5z" />
+            </svg>
+          </button>
+          <div class="absolute hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-64 top-6 left-0 z-50">
+            <strong class="block mb-1 text-indigo-700">Using Job Filters</strong>
+            Use the dropdowns and search to filter jobs by <strong>Location</strong>, <strong>Opportunity Type</strong>, or <strong>Category</strong>.
+            <br><br> Click <strong>Search Web</strong> to scrape the internet for more listing using your current filters. <strong>Be patient</strong>, this may take a while.
+          </div>
+        </div>
       </div>
+
 
 
       <!-- Scraped Jobs Results -->
