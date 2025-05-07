@@ -358,7 +358,7 @@ def friends():
     leaderboard_data = []
     for idx, user in enumerate(friends_and_self):
         # Count applications for this user
-        app_count = JobApplication.query.filter_by(owner_id=user.id).count()
+        app_count = JobApplication.query.filter_by(user_id=user.id).count()
         
         leaderboard_data.append({
             'name': user.name,
