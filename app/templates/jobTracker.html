@@ -2,70 +2,92 @@
 {% set active_page = "job-tracker" %}
 {% block title %}Job Tracker Board{% endblock %}
 {% block content %}
-<div class="flex-1 flex flex-col overflow-hidden">
+<div class="flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
   <!-- HEADER -->
-  <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-    <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-    <button id="openModal" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-      + Add Application
-    </button>
+  <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
+      <div class="flex gap-4 items-center">
+        <!-- Column Visibility Dropdown -->
+        <div class="relative" id="columnToggleDropdown">
+          <button onclick="toggleDropdown()" 
+                  class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none">
+            <span class="text-sm text-gray-700">Show/Hide Columns</span>
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div id="columnDropdown" 
+               class="hidden absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <div class="p-3 space-y-2">
+              {% for col in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
+              <label class="flex items-center justify-between hover:bg-gray-50 px-3 py-2 rounded cursor-pointer">
+                <span class="text-sm text-gray-700">{{ col }}</span>
+                <input type="checkbox" 
+                       class="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" 
+                       checked 
+                       onchange="toggleColumn('{{ col }}')" 
+                       data-column="{{ col }}">
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        
+        <button id="openModal" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+          + Add Application
+        </button>
+      </div>
+    </div>
   </header>
 
-  <!-- SEARCH BAR -->
-  <div class="p-4 flex flex-wrap gap-4 bg-white shadow-md rounded-lg mb-6">
-    <input type="text" id="searchInput" placeholder="Search for roles or companies" class="border rounded-lg px-4 py-2 flex-1" />
-    <input type="date" class="border rounded-lg px-4 py-2" />
-    <input type="date" class="border rounded-lg px-4 py-2" />
-    <select class="border rounded-lg px-4 py-2">
-      <option>Job Type</option>
-    </select>
-    <select class="border rounded-lg px-4 py-2">
-      <option>Status</option>
-    </select>
-  </div>
-
   <!-- TABLE -->
-  <main class="flex-1 overflow-x-auto p-4 bg-white rounded-lg shadow-md">
-    <table class="min-w-full table-fixed">
-      <thead class="bg-indigo-100">
-        <tr>
-          {% for col in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
-            <th class="px-4 py-2 text-sm text-gray-600">{{ col }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
-          <td id="{{ column }}" ondragover="event.preventDefault()" ondrop="onDrop(event, '{{ column }}')" class="border h-40 align-top p-2">
+<main class="flex-1 p-4 overflow-hidden">
+  <div class="bg-white rounded-lg shadow-md h-full overflow-hidden">
+    <div class="h-full overflow-x-auto">
+      <div class="flex gap-4 p-4 h-full w-max items-stretch">
+        {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
+        <div id="column-{{ column }}" class="w-80 flex-shrink-0 flex flex-col h-full">
+          <div class="bg-indigo-100 px-4 py-2 text-sm text-gray-600 font-semibold rounded-t sticky top-0 z-10">
+            {{ column }}
+          </div>
+          <div id="{{ column }}" 
+               ondragover="event.preventDefault()" 
+               ondrop="onDrop(event, '{{ column }}')" 
+               class="flex-1 bg-gray-50 rounded-b p-2 border border-gray-200 overflow-y-auto">
             {% for job in grouped[column] %}
-              <div id="job-{{ job.id }}" draggable="true" ondragstart="onDragStart(event)" class="bg-indigo-50 p-4 rounded-lg shadow mb-2 relative cursor-move">
-                <button onclick="deleteJob('job-{{ job.id }}')" class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
-                <p class="font-semibold text-indigo-800">{{ job.company }}</p>
-                <p class="text-gray-600">{{ job.title }}</p>
-                {% if job.location %}
-                <p class="text-xs text-gray-500 mt-1">📍 {{ job.location }}</p>
-                {% endif %}
-                {% if job.job_type %}
-                <p class="text-xs text-gray-500">💼 {{ job.job_type }}</p>
-                {% endif %}
-                {% if job.closing_date %}
-                <p class="text-xs text-red-600 mt-1">Closes: {{ job.closing_date.strftime('%d %b %Y') }}</p>
-                {% endif %}
-                <p class="text-xs text-gray-400 mt-1">Added: {{ job.date_applied.strftime('%Y-%m-%d') }}</p>
-                <!-- SHARE BUTTON -->
-                <button onclick="openShareModal('{{ job.id }}')"
-                  class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
-                  Share
-                </button>
-              </div>
+            <div id="job-{{ job.id }}" 
+                 draggable="true" 
+                 ondragstart="onDragStart(event)" 
+                 class="bg-white p-4 rounded-lg shadow mb-2 relative cursor-move hover:shadow-md transition-shadow">
+              <button onclick="deleteJob('job-{{ job.id }}')" 
+                      class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
+              <p class="font-semibold text-indigo-800">{{ job.company }}</p>
+              <p class="text-gray-600">{{ job.title }}</p>
+              {% if job.location %}
+              <p class="text-xs text-gray-500 mt-1">📍 {{ job.location }}</p>
+              {% endif %}
+              {% if job.job_type %}
+              <p class="text-xs text-gray-500">💼 {{ job.job_type }}</p>
+              {% endif %}
+              {% if job.closing_date %}
+              <p class="text-xs text-red-600 mt-1">Closes: {{ job.closing_date.strftime('%d %b %Y') }}</p>
+              {% endif %}
+              <p class="text-xs text-gray-400 mt-1">Added: {{ job.date_applied.strftime('%Y-%m-%d') }}</p>
+              <button onclick="openShareModal('{{ job.id }}')"
+                      class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
+                Share
+              </button>
+            </div>
             {% endfor %}
-          </td>
-          {% endfor %}
-        </tr>
-      </tbody>
-    </table>
-  </main>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</main>
+
 
   <!-- Add Application Modal -->
   <div id="add-application-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
@@ -217,16 +239,6 @@ function deleteJob(id) {
   });
 }
 
-const searchInput = document.getElementById("searchInput");
-searchInput.addEventListener("input", function() {
-  const filter = this.value.toLowerCase();
-  const jobs = document.querySelectorAll("td > div");
-  jobs.forEach(job => {
-    const text = job.innerText.toLowerCase();
-    job.parentElement.style.display = text.includes(filter) ? "" : "none";
-  });
-});
-
 // SHARE MODAL SCRIPT
 let currentAppId = null;
 function openShareModal(appId) {
@@ -268,5 +280,46 @@ window.onclick = function(event) {
     closeModal();
   }
 }
+
+// Column visibility dropdown
+function toggleDropdown() {
+  const dropdown = document.getElementById('columnDropdown');
+  dropdown.classList.toggle('hidden');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('columnDropdown');
+  const toggleButton = document.getElementById('columnToggleDropdown');
+  
+  if (!toggleButton.contains(event.target) && !dropdown.contains(event.target)) {
+    dropdown.classList.add('hidden');
+  }
+});
+
+function toggleColumn(columnId) {
+  const column = document.getElementById(`column-${columnId}`);
+  const checkbox = document.querySelector(`input[data-column="${columnId}"]`);
+  
+  if (column && checkbox) {
+    if (checkbox.checked) {
+      column.classList.remove('hidden');
+    } else {
+      column.classList.add('hidden');
+    }
+    localStorage.setItem(`column_${columnId}`, checkbox.checked ? 'visible' : 'hidden');
+  }
+}
+
+// Initialize column visibility based on localStorage or default to all visible
+document.addEventListener('DOMContentLoaded', function() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(checkbox => {
+    const columnId = checkbox.dataset.column;
+    const isVisible = localStorage.getItem(`column_${columnId}`) !== 'hidden';
+    checkbox.checked = isVisible;
+    toggleColumn(columnId);
+  });
+});
 </script>
 {% endblock %}
