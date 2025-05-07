@@ -103,17 +103,31 @@
       </select>
     </div>
 
-    <!-- Shared Apps List - Now with fixed height and always scrollable -->
+    <!-- Shared Apps List -->
     <div class="overflow-y-scroll h-64 border border-gray-200 rounded mb-4">
       <ul class="space-y-3 p-4" id="shared-apps-list">
         {% if shared_apps %}
           {% for app in shared_apps %}
-            <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center">
+            <li class="border p-4 rounded hover:bg-gray-50 flex justify-between items-center" id="shared-app-{{ app.id }}">
               <div>
                 <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
-                <p class="text-gray-500 text-sm">Shared by {{ app.owner.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+                <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+                {% if app.location or app.job_type %}
+                  <p class="text-gray-500 text-xs mt-1">
+                    {% if app.location %}📍 {{ app.location }}{% endif %}
+                    {% if app.location and app.job_type %} • {% endif %}
+                    {% if app.job_type %}💼 {{ app.job_type }}{% endif %}
+                  </p>
+                {% endif %}
+                {% if app.closing_date %}
+                  <p class="text-red-600 text-xs mt-1">Closes: {{ app.closing_date.strftime('%d %b %Y') }}</p>
+                {% endif %}
               </div>
-              <button class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded" data-app-id="{{ app.id }}">Save</button>
+              <button onclick="saveApplication('{{ app.id }}')" 
+                      class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors duration-200"
+                      id="save-btn-{{ app.id }}">
+                Save to Tracker
+              </button>
             </li>
           {% endfor %}
         {% else %}
@@ -126,37 +140,48 @@
 </main>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const sharedAppsList = document.getElementById('shared-apps-list');
-  if (sharedAppsList) {
-    sharedAppsList.addEventListener('click', function (e) {
-      if (e.target.classList.contains('save-app-btn')) {
-        const appId = e.target.getAttribute('data-app-id');
-        saveApplication(appId);
-      }
-    });
-  }
-});
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-opacity duration-300`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 function saveApplication(appId) {
+  const button = document.getElementById(`save-btn-${appId}`);
+  button.disabled = true;
+  button.textContent = 'Saving...';
+  button.classList.add('opacity-75');
+
   fetch(`/save-shared-application/${appId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     }
   })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert('Application saved to your tracker!');
-      } else {
-        alert(data.error || 'Failed to save application');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('Failed to save application');
-    });
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      button.textContent = 'Saved!';
+      button.classList.remove('bg-green-500', 'hover:bg-green-600');
+      button.classList.add('bg-gray-500', 'cursor-not-allowed');
+      showToast('Application saved to your tracker!', 'success');
+    } else {
+      throw new Error(data.error || 'Failed to save application');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    button.disabled = false;
+    button.textContent = 'Save to Tracker';
+    button.classList.remove('opacity-75');
+    showToast(error.message || 'Failed to save application', 'error');
+  });
 }
 </script>
 {% endblock %}
