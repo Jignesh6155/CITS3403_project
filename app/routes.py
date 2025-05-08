@@ -1,11 +1,12 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app import app
 from app.models import db, User, JobApplication, FriendRequest, Notification
-from app.models import ScrapedJob
+from app.models import ScrapedJob, application_shares
 from collections import Counter
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
 from sqlalchemy import or_
+from sqlalchemy import text
 import threading
 import queue
 import time
@@ -413,15 +414,30 @@ def comms():
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return redirect(url_for('home'))
+    
     # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
         .all()
     
+    # Get app statuses using raw SQL with proper text() wrapper
+    app_statuses = {}
+    for app in shared_apps:
+        # Use text() and parameter binding for safety
+        result = db.session.execute(
+            text("SELECT status FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
+            {"user_id": user.id, "app_id": app.id}
+        ).fetchone()
+        
+        # Default to 'active' if no status found
+        status = result[0] if result else 'active'
+        app_statuses[app.id] = status
+    
     # Get pending friend requests
     pending_requests = FriendRequest.query.filter_by(
         receiver_id=user.id, status='pending'
     ).all()
+    
     # Get the current user's friends
     user_friends = user.friends.all()
     
@@ -431,6 +447,7 @@ def comms():
         user=user,
         current_user=user,
         shared_apps=shared_apps,
+        app_statuses=app_statuses,
         pending_requests=pending_requests
     )
 @app.route("/upload", methods=["POST"])
@@ -912,6 +929,7 @@ def save_shared_application(app_id):
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
+    
     # Get the original application
     shared_app = JobApplication.query.get(app_id)
     if not shared_app:
@@ -920,6 +938,7 @@ def save_shared_application(app_id):
     # Check if the application is shared with the user
     if user not in shared_app.shared_with:
         return jsonify({"error": "Application not shared with you"}), 403
+    
     try:
         # Create a new application for the current user
         new_app = JobApplication(
@@ -934,6 +953,13 @@ def save_shared_application(app_id):
         )
         
         db.session.add(new_app)
+        
+        # Update the status in application_shares using text() and parameter binding
+        db.session.execute(
+            text("UPDATE application_shares SET status = 'archived' WHERE user_id = :user_id AND job_application_id = :app_id"),
+            {"user_id": user.id, "app_id": app_id}
+        )
+        
         db.session.commit()
         
         return jsonify({
