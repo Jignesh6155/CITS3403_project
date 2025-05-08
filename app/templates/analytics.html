@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% set active_page = "analytics" %}
-
 {% block title %}Career Analytics Arena{% endblock %}
-
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
   <h1 class="text-xl font-semibold text-indigo-900">Career Analytics Arena</h1>
@@ -11,226 +9,105 @@
     <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
   </div>
 </header>
-
-<main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto">
-
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Log a Job Application</h2>
-    <form class="space-y-4">
-      <input type="text" placeholder="Company Name" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-indigo-500 focus:outline-none" />
-      <select class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-indigo-500 focus:outline-none">
-        <option>Submitted</option>
-        <option>Interviewed</option>
-        <option>Offered</option>
-        <option>Rejected</option>
-      </select>
-      <select class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-indigo-500 focus:outline-none">
-        <option disabled selected>Select Application Type</option>
-        <option>Graduate Program</option>
-        <option>Internship</option>
-        <option>Full-Time Role</option>
-        <option>Part-Time</option>
-      </select>
-      <input type="date" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-indigo-500 focus:outline-none" />
-      <button class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">Add Entry</button>
-    </form>
-  </section>
-
+<main class="flex-1 p-6 space-y-6 overflow-y-auto">
+  <!-- ── career-stats tiles ──────────────────────────────────────────── -->
   <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Career Stats</h2>
     <div class="grid grid-cols-2 gap-4 text-sm">
       <div class="bg-indigo-50 p-4 rounded shadow">
         <p class="text-xs text-gray-500 mb-1">Applications Sent</p>
-        <p class="text-xl font-bold text-indigo-700">42</p>
+        <p class="text-xl font-bold text-indigo-700">{{ total_apps }}</p>
       </div>
       <div class="bg-indigo-50 p-4 rounded shadow">
         <p class="text-xs text-gray-500 mb-1">Interviews</p>
-        <p class="text-xl font-bold text-indigo-700">11</p>
+        <p class="text-xl font-bold text-indigo-700">{{ interviews }}</p>
       </div>
       <div class="bg-indigo-50 p-4 rounded shadow">
         <p class="text-xs text-gray-500 mb-1">Offers</p>
-        <p class="text-xl font-bold text-indigo-700">3</p>
+        <p class="text-xl font-bold text-indigo-700">{{ offers }}</p>
       </div>
       <div class="bg-indigo-50 p-4 rounded shadow">
         <p class="text-xs text-gray-500 mb-1">Avg. Response Time</p>
-        <p class="text-xl font-bold text-indigo-700">5.8 days</p>
+        <p class="text-xl font-bold text-indigo-700">
+          {{ avg_response if avg_response is not none else "N/A" }} days
+        </p>
       </div>
       <div class="bg-indigo-50 p-4 rounded shadow col-span-2">
         <p class="text-xs text-gray-500 mb-1">Success Rate</p>
-        <p class="text-xl font-bold text-indigo-700">7.1%</p>
+        <p class="text-xl font-bold text-indigo-700">{{ success_rate }}%</p>
       </div>
     </div>
-    <p class="text-xs text-gray-500 italic mt-3 text-center">These stats are based on your recent logs.</p>
+    <p class="text-xs text-gray-500 italic mt-3 text-center">
+      Live figures from your Job-Tracker board
+    </p>
   </section>
-
-  <section class="col-span-1 lg:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-2">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Top Career Performers</h2>
-      <ul class="space-y-3 text-sm">
-        <li class="bg-indigo-50 px-4 py-3 rounded-md flex justify-between">
-          <span>🔥 <strong>User1</strong> — 5 Offers in 2 Weeks</span>
-          <span class="text-green-600">Rank #1</span>
-        </li>
-        <li class="bg-indigo-50 px-4 py-3 rounded-md flex justify-between">
-          <span>💼 <strong>User2</strong> — 3 Offers, 11 Interviews</span>
-          <span class="text-yellow-500">Rank #2</span>
-        </li>
-        <li class="bg-indigo-50 px-4 py-3 rounded-md flex justify-between">
-          <span>🚀 <strong>User3</strong> — Fastest Avg. Response (3 days)</span>
-          <span class="text-blue-500">Rank #3</span>
-        </li>
-      </ul>
+  <!-- ── graph layout: merged top-left panel ─────────────────────────── -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- 7-day activity AND cumulative apps stacked in one card -->
+    <div class="bg-white border p-4 shadow rounded-lg lg:col-span-1">
+      <h2 class="text-sm font-semibold mb-2">7-Day Activity</h2>
+      <canvas id="appChart" class="w-full h-40 mb-6"></canvas>
+      <h2 class="text-sm font-semibold mb-2">Cumulative Apps</h2>
+      <canvas id="cumChart" class="w-full h-40"></canvas>
     </div>
-    <div class="bg-white border border-gray-200 p-6 shadow rounded-lg">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Weekly Stats</h2>
-      <div class="w-full h-40">
-        <canvas id="appChart"></canvas>
-      </div>
+    <!-- Offers vs Rejections -->
+    <div class="bg-white border p-4 shadow rounded-lg">
+      <h2 class="text-sm font-semibold mb-2">Offers vs Rejections</h2>
+      <canvas id="outcomeChart" class="w-full h-48"></canvas>
+    </div>
+    <!-- Application Types -->
+    <div class="bg-white border p-4 shadow rounded-lg">
+      <h2 class="text-sm font-semibold mb-2">Application Types</h2>
+      <canvas id="typeRadar" class="w-full h-64"></canvas>
     </div>
   </section>
-
-  <section class="col-span-1 lg:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="bg-white border border-gray-200 p-6 shadow rounded-lg">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Offer vs Rejection Ratio</h2>
-      <div class="w-full h-56">
-        <canvas id="outcomeChart"></canvas>
-      </div>
-    </div>
-    <div class="bg-white border border-gray-200 p-6 shadow rounded-lg">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Type Breakdown</h2>
-      <div class="w-full h-56">
-        <canvas id="typeChart"></canvas>
-      </div>
-    </div>
-    <div class="bg-white border border-gray-200 p-6 shadow rounded-lg">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Status Distribution</h2>
-      <div class="w-full h-56">
-        <canvas id="statusChart"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <section class="col-span-1 lg:col-span-2 bg-white border border-gray-200 p-6 shadow rounded-lg">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Badges</h2>
-    <div class="flex gap-4 flex-wrap text-sm">
-      <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full">🌟 First Interview!</span>
-      <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">🏅 Offer Achieved</span>
-      <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full">📈 10 Applications Logged</span>
-    </div>
-    <p class="text-xs text-gray-500 mt-3 italic">More badges unlock as you progress 🚀</p>
-  </section>
-
 </main>
-
+{% endblock %}
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const ctx = document.getElementById('appChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [
-        {
-          label: 'Applications Sent',
-          data: [3, 2, 4, 1, 5, 0, 2],
-          borderColor: 'rgba(99, 102, 241, 1)',
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          borderWidth: 2,
-          tension: 0.4
-        },
-        {
-          label: 'Interviews',
-          data: [1, 0, 1, 0, 1, 0, 0],
-          borderColor: 'rgba(34, 197, 94, 1)',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          borderWidth: 2,
-          tension: 0.4
-        },
-        {
-          label: 'Offers',
-          data: [0, 0, 1, 0, 0, 0, 0],
-          borderColor: 'rgba(234, 179, 8, 1)',
-          backgroundColor: 'rgba(234, 179, 8, 0.1)',
-          borderWidth: 2,
-          tension: 0.4
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true, position: 'bottom' }
-      },
-      scales: {
-        y: { beginAtZero: true }
-      }
-    }
-  });
-
-  new Chart(document.getElementById('outcomeChart'), {
-    type: 'pie',
-    data: {
-      labels: ['Offers', 'Rejections'],
-      datasets: [{
-        data: [3, 15],
-        backgroundColor: ['#4ade80', '#f87171']
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' }
-      }
-    }
-  });
-
-  new Chart(document.getElementById('typeChart'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Graduate Program', 'Internship', 'Full-Time Role', 'Part-Time'],
-      datasets: [{
-        data: [10, 5, 15, 3],
-        backgroundColor: [
-          'rgba(99, 102, 241, 0.7)',
-          'rgba(34, 197, 94, 0.7)',
-          'rgba(234, 179, 8, 0.7)',
-          'rgba(244, 63, 94, 0.7)'
-        ]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' }
-      }
-    }
-  });
-
-  new Chart(document.getElementById('statusChart'), {
-    type: 'bar',
-    data: {
-      labels: ['Submitted', 'Interviewed', 'Offered', 'Rejected'],
-      datasets: [{
-        label: 'Count',
-        data: [25, 11, 3, 15],
-        backgroundColor: [
-          'rgba(99, 102, 241, 0.7)',
-          'rgba(34, 197, 94, 0.7)',
-          'rgba(234, 179, 8, 0.7)',
-          'rgba(239, 68, 68, 0.7)'
-        ]
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        x: { beginAtZero: true }
-      }
-    }
-  });
+const indigo='rgba(99,102,241,1)', indigoT='rgba(99,102,241,.15)';
+const green ='rgba(34,197,94,1)',  greenT ='rgba(34,197,94,.15)';
+const yellow='rgba(234,179,8,1)',  yellowT='rgba(234,179,8,.15)';
+/* 7-day activity line */
+new Chart(appChart,{
+  type:'line',
+  data:{labels:{{ weekly_labels|safe }},
+        datasets:[
+          {label:'Apps',data:{{ weekly_apps|safe }},
+           borderColor:indigo,backgroundColor:indigoT,tension:.4},
+          {label:'Interviews',data:{{ weekly_int|safe }},
+           borderColor:green,backgroundColor:greenT,tension:.4},
+          {label:'Offers',data:{{ weekly_off|safe }},
+           borderColor:yellow,backgroundColor:yellowT,tension:.4}
+        ]},
+  options:{responsive:true,plugins:{legend:{display:false}},
+           scales:{y:{beginAtZero:true}}}
+});
+/* cumulative apps */
+new Chart(cumChart,{
+  type:'line',
+  data:{labels:{{ cum_labels|safe }},
+        datasets:[{label:'Total',data:{{ cum_counts|safe }},
+                   borderColor:indigo,backgroundColor:indigoT,fill:true,tension:.3}]},
+  options:{responsive:true,plugins:{legend:{display:false}},
+           scales:{y:{beginAtZero:true}}}
+});
+/* offers vs rejections */
+new Chart(outcomeChart,{
+  type:'pie',
+  data:{labels:{{ outcome_labels|safe }},
+        datasets:[{data:{{ outcome_counts|safe }},
+                   backgroundColor:['#4ade80','#f87171']}]},
+  options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+});
+/* application types radar */
+new Chart(typeRadar,{
+  type:'radar',
+  data:{labels:{{ type_labels|safe }},
+        datasets:[{data:{{ type_counts|safe }},
+                   backgroundColor:indigoT,borderColor:indigo}]},
+  options:{responsive:true,plugins:{legend:{display:false}}}
+});
 </script>
 {% endblock %}

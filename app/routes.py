@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, session, flash, j
 from app import app
 from app.models import db, User, JobApplication, FriendRequest, Notification
 from app.models import ScrapedJob
+from collections import Counter
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
 from sqlalchemy import or_
@@ -15,10 +16,8 @@ from datetime import datetime, timedelta
 import pytz
 import re
 
-
 # Simple in-memory rate limiting
 request_counts = {}
-
 def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
     """Basic rate limiting"""
     key = f"{user_id}:{action}"
@@ -38,7 +37,6 @@ def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
     # Add current request
     request_counts[key].append(now)
     return True
-
 def create_notification(user_id, content, link=None, notification_type="general"):
     """Create a notification for a user"""
     notification = Notification(
@@ -51,12 +49,10 @@ def create_notification(user_id, content, link=None, notification_type="general"
     db.session.add(notification)
     db.session.commit()
     return notification
-
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
 SCRAPE_SIZE = 3
-
 
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
@@ -160,7 +156,6 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                 'status': 'complete'
             })
             print(f"[DEBUG] Scraping complete, sent completion message to queue")
-
 def job_matches(job, search, location, job_type, category, confidence=0.35):
     """Check if a job matches the search criteria"""
     if not job:
@@ -201,7 +196,6 @@ def job_matches(job, search, location, job_type, category, confidence=0.35):
     )
     
     return basic_match and location_match and job_type_match and category_match
-
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -330,16 +324,95 @@ def job_search():
     return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
 @app.route("/analytics")
 def analytics():
-    return render_template("analytics.html", active_page="analytics")
+    # --- auth guard -------------------------------------------------------
+    if "name" not in session:
+        return redirect(url_for("home"))
+    user = User.query.filter_by(name=session["name"]).first()
+    if not user:
+        return redirect(url_for("home"))
+    # --- grab all of this user’s applications ----------------------------
+    applications = JobApplication.query.filter_by(user=user).all()
+    total_apps   = len(applications)
+    # quick counters -------------------------------------------------------
+    interviews  = sum(a.status == "Interviewing" for a in applications)
+    offers      = sum(a.status == "Offer"         for a in applications)
+    rejections  = sum(a.status in ("Archived", "Discontinued") for a in applications)
+    # avg response time (days) -------------------------------------------
+    responded = [
+        a for a in applications
+        if a.status in ("Offer", "Accepted", "Archived", "Discontinued")
+        and a.date_applied and a.closing_date
+    ]
+    avg_resp_days = (
+        round(sum((a.closing_date - a.date_applied).days for a in responded) /
+              len(responded), 1)
+        if responded else None
+    )
+    success_rate = round((offers / total_apps) * 100, 1) if total_apps else 0
+    # status / type distributions ----------------------------------------
+    status_counts, type_counts = {}, {}
+    for a in applications:
+        status_counts[a.status] = status_counts.get(a.status, 0) + 1
+        t = a.job_type or "Unknown"
+        type_counts[t] = type_counts.get(t, 0) + 1
+    # weekly snapshot (last 7 days) --------------------------------------
+    today = datetime.now(pytz.timezone("Australia/Perth")).date()
+    weekly_labels, weekly_apps, weekly_int, weekly_off = [], [], [], []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        weekly_labels.append(day.strftime("%a"))
+        weekly_apps.append(sum(a.date_applied
+                               and a.date_applied.date() == day
+                               for a in applications))
+        weekly_int.append(sum(a.status == "Interviewing"
+                              and a.date_applied
+                              and a.date_applied.date() == day
+                              for a in applications))
+        weekly_off.append(sum(a.status == "Offer"
+                              and a.date_applied
+                              and a.date_applied.date() == day
+                              for a in applications))
+    # cumulative applications over calendar time -------------------------
+    by_day = Counter(a.date_applied.date()
+                     for a in applications if a.date_applied)
+    cum_labels, cum_counts, running = [], [], 0
+    for d in sorted(by_day):
+        running += by_day[d]
+        cum_labels.append(d.strftime("%d %b"))
+        cum_counts.append(running)
+    # --------------------------------------------------------------------
+    return render_template(
+        "analytics.html",
+        active_page="analytics",
+        # tiles
+        total_apps   = total_apps,
+        interviews   = interviews,
+        offers       = offers,
+        avg_response = avg_resp_days,
+        success_rate = success_rate,
+        # weekly
+        weekly_labels = weekly_labels,
+        weekly_apps   = weekly_apps,
+        weekly_int    = weekly_int,
+        weekly_off    = weekly_off,
+        # outcomes / breakdowns
+        outcome_labels = ["Offers", "Rejections"],
+        outcome_counts = [offers, rejections],
+        type_labels    = list(type_counts.keys()),
+        type_counts    = list(type_counts.values()),
+        status_labels  = list(status_counts.keys()),
+        status_counts  = list(status_counts.values()),
+        # cumulative
+        cum_labels  = cum_labels,
+        cum_counts  = cum_counts,
+    )
 @app.route("/comms")
 def comms():
     if 'name' not in session:
         return redirect(url_for('home'))
-
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return redirect(url_for('home'))
-
     # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
@@ -349,7 +422,6 @@ def comms():
     pending_requests = FriendRequest.query.filter_by(
         receiver_id=user.id, status='pending'
     ).all()
-
     # Get the current user's friends
     user_friends = user.friends.all()
     
@@ -373,7 +445,6 @@ def upload():
         # Get AI-suggested job titles (keywords)
         job_titles = resume_processor.extract_keywords_openai(text)
         job_titles = [kw.strip().strip(string.punctuation) for kw in job_titles if kw.strip()]
-
         print("[DEBUG] Extracted keywords:", job_titles)
         # Find up to 5 jobs that fuzzy match any keyword
         from app.models import ScrapedJob
@@ -585,14 +656,12 @@ def send_friend_request():
         )
         db.session.add(new_request)
         db.session.commit()
-
         create_notification(
             friend.id, 
             f"{current_user.name} sent you a friend request", 
             link=url_for('comms'), 
             notification_type="friend_request"
         )
-
         
         flash('Friend request sent', 'success')
     else:
@@ -639,7 +708,6 @@ def add_application():
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
-
     try:
         if request.is_json:
             # Handle JSON request from job search page
@@ -652,7 +720,6 @@ def add_application():
                     closing_date = datetime.strptime(data['closing_date'], "%d %b %Y")
                 except ValueError:
                     pass
-
             application = JobApplication(
                 title=data['title'],
                 company=data['company'],
@@ -674,21 +741,17 @@ def add_application():
                 status=request.form.get('status', 'Saved'),
                 user=user
             )
-
         db.session.add(application)
         db.session.commit()
-
         if request.is_json:
             return jsonify({"success": True})
         return redirect(url_for("job_tracker"))
-
     except Exception as e:
         db.session.rollback()
         if request.is_json:
             return jsonify({"error": str(e)}), 400
         flash('Error adding application: ' + str(e), 'error')
         return redirect(url_for("job_tracker"))
-
 @app.route('/api/job-applications', methods=['GET'])
 def get_applications():
     if not current_user.is_authenticated:
@@ -707,27 +770,21 @@ def get_applications():
         'user_id': app.user_id,
         'scraped_job_id': app.scraped_job_id
     } for app in applications])
-
 @app.route('/share-application/<int:app_id>', methods=['POST'])
 def share_application(app_id):
     if 'name' not in session:
         return redirect(url_for('home'))
-
     user = User.query.filter_by(name=session['name']).first()
     application = JobApplication.query.get(app_id)
-
     if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
         return redirect(url_for('job_tracker'))
-
     friend_id = request.form.get('friend_id')
     friend = User.query.get(friend_id)
-
     if friend and friend in user.friends:
         if application not in friend.shared_applications:
             friend.shared_applications.append(application)
             db.session.commit()
-
             create_notification(
                 friend.id,
                 f"{user.name} shared a job application at {application.company} with you",
@@ -739,9 +796,7 @@ def share_application(app_id):
             flash('Application already shared with this friend', 'error')
     else:
         flash('Friend not found', 'error')
-
     return redirect(url_for('job_tracker'))
-
 @app.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
@@ -760,23 +815,18 @@ def job_tracker():
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return redirect(url_for('home'))
-
     # Only applications owned by the current user
     applications = JobApplication.query.filter_by(user=user).all()
-
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     grouped = {status: [] for status in statuses}
-
     for app in applications:
         grouped[app.status].append(app)
-
     return render_template(
         "jobtracker.html",
         active_page="job-tracker",
         grouped=grouped,
         user=user
     )
-
 @app.route('/api/notifications', methods=['GET', 'POST'])
 def notifications():
     if 'name' not in session:
@@ -833,7 +883,6 @@ def notifications():
         
         db.session.commit()
         return jsonify({'success': True})
-
 @app.route("/delete-application/<int:job_id>", methods=["DELETE"])
 def delete_application(job_id):
     if 'name' not in session:
@@ -842,14 +891,12 @@ def delete_application(job_id):
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
-
     application = JobApplication.query.get(job_id)
     if not application:
         return jsonify({"error": "Application not found"}), 404
         
     if application.user_id != user.id:
         return jsonify({"error": "Not authorized"}), 403
-
     try:
         db.session.delete(application)
         db.session.commit()
@@ -857,7 +904,6 @@ def delete_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
 @app.route('/save-shared-application/<int:app_id>', methods=['POST'])
 def save_shared_application(app_id):
     if 'name' not in session:
@@ -866,7 +912,6 @@ def save_shared_application(app_id):
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
-
     # Get the original application
     shared_app = JobApplication.query.get(app_id)
     if not shared_app:
@@ -875,7 +920,6 @@ def save_shared_application(app_id):
     # Check if the application is shared with the user
     if user not in shared_app.shared_with:
         return jsonify({"error": "Application not shared with you"}), 403
-
     try:
         # Create a new application for the current user
         new_app = JobApplication(
