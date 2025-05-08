@@ -7,7 +7,8 @@ db = SQLAlchemy()
 # Association table for sharing job applications between users
 application_shares = db.Table('application_shares',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-    db.Column('job_application_id', db.Integer, db.ForeignKey('job_application.id'), primary_key=True)
+    db.Column('job_application_id', db.Integer, db.ForeignKey('job_application.id'), primary_key=True),
+    db.Column('status', db.String(20), default='active')  # Add this line
 )
 
 # Association table for user friendships

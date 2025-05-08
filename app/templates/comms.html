@@ -105,11 +105,11 @@
   </section>
 
   <!-- Shared Applications -->
-  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
+  <section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 flex flex-col h-full">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
 
     <!-- Filters -->
-    <div class="flex flex-wrap gap-4 mb-4">
+    <div class="flex flex-wrap gap-4 mb-4 flex-shrink-0">
       <input type="text" id="job-search" placeholder="Search Job Title" class="border rounded px-3 py-2 text-sm flex-1" onkeyup="filterApplications()" />
       <select id="job-type-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
         <option value="">Filter by Job Type</option>
@@ -126,20 +126,20 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b border-gray-200 mb-4">
+    <div class="flex border-b border-gray-200 mb-4 flex-shrink-0">
       <button id="active-tab" class="tab-btn px-4 py-2 border-b-2 border-indigo-500 text-indigo-600 font-medium" onclick="switchTab('active')">Active</button>
       <button id="archived-tab" class="tab-btn px-4 py-2 text-gray-600 hover:text-gray-800" onclick="switchTab('archived')">Archived</button>
     </div>
 
     <!-- Shared Apps List Container -->
-    <div class="overflow-y-scroll h-64 border border-gray-200 rounded mb-4">
+    <div class="overflow-y-auto flex-1 border border-gray-200 rounded mb-4">
       <!-- Active Applications List -->
-      <ul class="space-y-3 p-4 tab-content" id="active-applications">
+      <ul class="space-y-3 p-4 tab-content h-full" id="active-applications">
         {% set active_apps = [] %}
         {% set archived_apps = [] %}
-        
+
         {% for app in shared_apps %}
-          {% if app not in user.job_applications %}
+          {% if app_statuses[app.id] == 'active' %}
             {% set temp = active_apps.append(app) %}
           {% else %}
             {% set temp = archived_apps.append(app) %}
@@ -180,7 +180,7 @@
       </ul>
       
       <!-- Archived Applications List -->
-      <ul class="space-y-3 p-4 tab-content hidden" id="archived-applications">
+      <ul class="space-y-3 p-4 tab-content hidden h-full" id="archived-applications">
         {% if archived_apps %}
           {% for app in archived_apps %}
             <li class="app-item border p-4 rounded hover:bg-gray-50"
