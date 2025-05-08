@@ -337,8 +337,10 @@ def comms():
         return redirect(url_for('home'))
 
     user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return redirect(url_for('home'))
 
-    # ✅ Get all JobApplications where the current user is in shared_with
+    # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
         .all()
@@ -348,13 +350,16 @@ def comms():
         receiver_id=user.id, status='pending'
     ).all()
 
+    # Get the current user's friends
+    user_friends = user.friends.all()
+    
     return render_template(
         "comms.html",
         active_page="comms",
+        user=user,
         current_user=user,
         shared_apps=shared_apps,
-        pending_requests=pending_requests,
-        chart_data={}
+        pending_requests=pending_requests
     )
 @app.route("/upload", methods=["POST"])
 def upload():
