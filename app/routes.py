@@ -330,7 +330,48 @@ def job_search():
     return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
 @app.route("/analytics")
 def analytics():
-    return render_template("analytics.html", active_page="analytics")
+    user = User.query.filter_by(name=session['name']).first()
+
+    # Fetch job applications for the user
+    applications = JobApplication.query.filter_by(user=user).all()
+
+    # Count the applications by status
+    status_counts_dict = {status: 0 for status in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued", "Rejected"]}
+
+    for app in applications:
+        if app.status in status_counts_dict:
+            status_counts_dict[app.status] += 1
+
+    # Other insights
+    offers_count = status_counts_dict.get("Offer", 0)
+    interviews_count = status_counts_dict.get("Interviewing", 0)
+    in_progress = sum(status_counts_dict[s] for s in status_counts_dict if s not in ["Accepted", "Archived", "Discontinued"])
+
+    # Count applications by job type (Internship, Graduate Job, Clerkship, Scholarship)
+    internship = sum(1 for app in applications if app.job_type == "Internship")
+    graduate_job = sum(1 for app in applications if app.job_type == "Graduate Job")
+    clerkship = sum(1 for app in applications if app.job_type == "Clerkship")
+    scholarship = sum(1 for app in applications if app.job_type == "Scholarship")
+
+    # Calculate success rate (applications that led to interviews or offers)
+    successful_applications = sum(1 for app in applications if app.status in ["Interviewing", "Offer"])
+    success_rate = round((successful_applications / len(applications) * 100), 2) if applications else 0
+
+    # Pass data to the template
+    return render_template("analytics.html", 
+        active_page="analytics",
+        status_labels=list(status_counts_dict.keys()),
+        status_counts=list(status_counts_dict.values()),
+        offers_count=offers_count,
+        interviews=interviews_count,
+        internship=internship,
+        graduate_job=graduate_job,
+        clerkship=clerkship,
+        scholarship=scholarship,
+        in_progress=in_progress,
+        success_rate=success_rate,
+        applications_sent=len(applications)  # Example: total applications sent
+    )
 @app.route("/comms")
 def comms():
     if 'name' not in session:
