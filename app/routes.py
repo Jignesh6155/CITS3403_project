@@ -241,33 +241,34 @@ def dashboard():
     user = User.query.filter_by(name=session["name"]).first()
     if not user:
         return redirect(url_for("home"))
+
     applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     status_counts_dict = {status: 0 for status in all_statuses}
-    company_counts = {}
     last_applied_raw = None
+
     for app in applications:
         if app.status in status_counts_dict:
             status_counts_dict[app.status] += 1
-        if app.date_applied:
-            if not last_applied_raw or app.date_applied > last_applied_raw:
-                last_applied_raw = app.date_applied
+        if app.date_applied and (not last_applied_raw or app.date_applied > last_applied_raw):
+            last_applied_raw = app.date_applied
+
     last_applied = last_applied_raw.strftime("%Y-%m-%d") if last_applied_raw else "N/A"
-    status_labels = []
-    status_counts = []
-    for status, count in status_counts_dict.items():
-        if count > 0:
-            status_labels.append(status)
-            status_counts.append(count)
+
+    status_labels = [status for status, count in status_counts_dict.items() if count > 0]
+    status_counts = [count for status, count in status_counts_dict.items() if count > 0]
     status_summary = list(zip(status_labels, status_counts))
+
     applied = status_counts_dict["Applied"]
     saved = status_counts_dict["Saved"]
     interviewing = status_counts_dict["Interviewing"]
     offers = status_counts_dict["Offer"]
     in_progress = sum(status_counts_dict[s] for s in all_statuses if s not in ["Accepted", "Archived", "Discontinued"])
-    inactive_statuses = {"Accepted", "Archived", "Discontinued"}
-    active_applications = [app for app in applications if app.status not in inactive_statuses]
+
+    active_applications = [app for app in applications if app.status not in {"Accepted", "Archived", "Discontinued"}]
     active_count = len(active_applications)
+
+    # Achievements
     achievements = []
     if applied >= 1:
         achievements.append(("First Application Sent", "You're on your way!", "green"))
@@ -293,7 +294,22 @@ def dashboard():
         achievements.append(("You're Hired!", "Accepted an offer!", "emerald"))
     if status_counts_dict["Discontinued"] >= 1:
         achievements.append(("No Longer Pursuing", "Moved on from a role.", "rose"))
+
     badges_earned = len(achievements)
+
+    # New Sneak Peek Data
+    random_jobs = ScrapedJob.query.order_by(db.func.random()).limit(3).all()
+    total_apps = len(applications)
+    success_rate = round((offers / total_apps) * 100, 1) if total_apps else 0
+
+    friends = user.friends.all()
+    all_users = [user] + friends
+    leaderboard = sorted(
+        [{'name': u.name, 'apps_count': len(u.job_applications)} for u in all_users],
+        key=lambda x: x['apps_count'],
+        reverse=True
+    )[:3]
+
     return render_template("dashboard.html",
         name=user.name,
         in_progress=in_progress,
@@ -307,8 +323,13 @@ def dashboard():
         status_summary=status_summary,
         active_count=active_count,
         badges_earned=badges_earned,
-        achievements=achievements
+        achievements=achievements,
+        random_jobs=random_jobs,
+        total_apps=total_apps,
+        success_rate=success_rate,
+        leaderboard_preview=leaderboard
     )
+
 @app.route("/logout")
 def logout():
     session.clear()
