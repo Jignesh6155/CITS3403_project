@@ -68,7 +68,14 @@
     <div id="right-panel"
          class="w-1/2 flex flex-col justify-center items-center p-10">
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Create Account</h2>
-      
+
+      {% if error %}
+      <div class="w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+        <span class="block sm:inline">{{ error }}</span>
+      </div>
+      {% endif %}
+
+     
       <!-- Dummy users dropdown for signup -->
       <div class="dummy-users-section w-full mb-4">
         <select onchange="const selectedUser = dummyUsers[this.value]; if(selectedUser) fillSignupForm(selectedUser.name, selectedUser.email, selectedUser.password);" 
