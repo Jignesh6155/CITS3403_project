@@ -16,6 +16,7 @@ import string
 from datetime import datetime, timedelta
 import pytz
 import re
+from app.utils.forms import AddApplicationForm, SignupForm, SigninForm, ResumeUploadForm
 
 # Simple in-memory rate limiting
 request_counts = {}
@@ -199,34 +200,40 @@ def job_matches(job, search, location, job_type, category, confidence=0.35):
     return basic_match and location_match and job_type_match and category_match
 @app.route("/")
 def home():
-    return render_template("index.html")
+    signup_form = SignupForm()
+    signin_form = SigninForm()
+    return render_template("index.html", signup_form=signup_form, signin_form=signin_form)
 @app.route("/signup", methods=["POST"])
 def signup():
-    name = request.form.get("name")
-    email = request.form.get("email")
-    password = request.form.get("password")
-    if name and email and password:
+    signup_form = SignupForm()
+    signin_form = SigninForm()
+    if signup_form.validate_on_submit():
+        name = signup_form.name.data
+        email = signup_form.email.data
+        password = signup_form.password.data
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
-            return render_template("index.html", error="Email already registered.")
+            return render_template("index.html", error="Email already registered.", signup_form=signup_form, signin_form=signin_form)
         new_user = User(name=name, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
         session["name"] = name
         return redirect(url_for("dashboard"))
-    return render_template("index.html", error="All fields are required.")
+    return render_template("index.html", error="All fields are required.", signup_form=signup_form, signin_form=signin_form)
 @app.route("/signin", methods=["POST"])
 def signin():
-    email = request.form.get("email")
-    password = request.form.get("password")
-    if email and password:
+    signup_form = SignupForm()
+    signin_form = SigninForm()
+    if signin_form.validate_on_submit():
+        email = signin_form.email.data
+        password = signin_form.password.data
         user = User.query.filter_by(email=email, password=password).first()
         if user:
             session["name"] = user.name
             return redirect(url_for("dashboard"))
         else:
-            return render_template("index.html", error="Invalid Email or Password.")
-    return render_template("index.html", error="All fields are required.")
+            return render_template("index.html", error="Invalid Email or Password.", signup_form=signup_form, signin_form=signin_form)
+    return render_template("index.html", error="All fields are required.", signup_form=signup_form, signin_form=signin_form)
 @app.route("/dashboard")
 def dashboard():
     if 'name' not in session:
@@ -322,7 +329,8 @@ def job_search():
         job.company = job.about_company_parsed[0] if job.about_company_parsed and len(job.about_company_parsed) > 0 else ""
     resume_keywords = session.pop('resume_keywords', [])
     suggested_jobs = session.pop('suggested_jobs', [])
-    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
+    resume_upload_form = ResumeUploadForm()
+    return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs, resume_upload_form=resume_upload_form)
 @app.route("/analytics")
 def analytics():
     # --- auth guard -------------------------------------------------------
@@ -331,7 +339,7 @@ def analytics():
     user = User.query.filter_by(name=session["name"]).first()
     if not user:
         return redirect(url_for("home"))
-    # --- grab all of this user’s applications ----------------------------
+    # --- grab all of this user's applications ----------------------------
     applications = JobApplication.query.filter_by(user=user).all()
     total_apps   = len(applications)
     # quick counters -------------------------------------------------------
@@ -721,52 +729,30 @@ def handle_friend_request(request_id):
 def add_application():
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
-        
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
+    form = AddApplicationForm()
     try:
-        if request.is_json:
-            # Handle JSON request from job search page
-            data = request.get_json()
-            
-            # Parse the closing date if it exists
-            closing_date = None
-            if data.get('closing_date'):
-                try:
-                    closing_date = datetime.strptime(data['closing_date'], "%d %b %Y")
-                except ValueError:
-                    pass
+        if form.validate_on_submit():
             application = JobApplication(
-                title=data['title'],
-                company=data['company'],
-                location=data.get('location'),
-                job_type=data.get('job_type'),
-                closing_date=closing_date,
-                status="Saved",
-                user=user,
-                scraped_job_id=data.get('scraped_job_id')
-            )
-        else:
-            # Handle form submission from job tracker page
-            application = JobApplication(
-                title=request.form['title'],
-                company=request.form['company'],
-                location=request.form.get('location'),
-                job_type=request.form.get('job_type'),
-                closing_date=datetime.strptime(request.form['closing_date'], "%Y-%m-%d") if request.form.get('closing_date') else None,
-                status=request.form.get('status', 'Saved'),
+                title=form.title.data,
+                company=form.company.data,
+                location=form.location.data,
+                job_type=form.job_type.data,
+                closing_date=form.closing_date.data,
+                status=form.status.data,
                 user=user
             )
-        db.session.add(application)
-        db.session.commit()
-        if request.is_json:
-            return jsonify({"success": True})
-        return redirect(url_for("job_tracker"))
+            db.session.add(application)
+            db.session.commit()
+            return redirect(url_for("job_tracker"))
+        else:
+            # If not valid, redirect back with errors (could be improved for AJAX)
+            flash('Error in form submission', 'error')
+            return redirect(url_for("job_tracker"))
     except Exception as e:
         db.session.rollback()
-        if request.is_json:
-            return jsonify({"error": str(e)}), 400
         flash('Error adding application: ' + str(e), 'error')
         return redirect(url_for("job_tracker"))
 @app.route('/api/job-applications', methods=['GET'])
@@ -828,7 +814,6 @@ def update_job_status():
 def job_tracker():
     if 'name' not in session:
         return redirect(url_for('home'))
-    
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return redirect(url_for('home'))
@@ -838,11 +823,13 @@ def job_tracker():
     grouped = {status: [] for status in statuses}
     for app in applications:
         grouped[app.status].append(app)
+    form = AddApplicationForm()
     return render_template(
         "jobtracker.html",
         active_page="job-tracker",
         grouped=grouped,
-        user=user
+        user=user,
+        form=form
     )
 @app.route('/api/notifications', methods=['GET', 'POST'])
 def notifications():

@@ -81,12 +81,11 @@
       </div>
 
       <form action="{{ url_for('signup') }}" method="POST" class="w-full flex flex-col gap-4">
-        <input type="text" name="name" placeholder="Name" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="email" name="email" placeholder="Email address" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
-          SIGN UP
-        </button>
+        {{ signup_form.hidden_tag() }}
+        {{ signup_form.name(class_="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none") }}
+        {{ signup_form.email(class_="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none") }}
+        {{ signup_form.password(class_="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none") }}
+        {{ signup_form.submit(class_="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition") }}
       </form>
     </div>
 
@@ -108,11 +107,10 @@
       </div>
 
       <form action="{{ url_for('signin') }}" method="POST" class="w-full flex flex-col gap-4">
-        <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
-          LOGIN
-        </button>
+        {{ signin_form.hidden_tag() }}
+        {{ signin_form.email(class_="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none") }}
+        {{ signin_form.password(class_="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none") }}
+        {{ signin_form.submit(class_="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition") }}
       </form>
 
       <button onclick="hideLogin()" class="mt-4 text-sm text-indigo-600 hover:underline">
