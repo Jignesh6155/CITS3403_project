@@ -981,3 +981,44 @@ def save_shared_application(app_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route("/update-application/<int:job_id>", methods=["POST"])
+def update_application(job_id):
+    if 'name' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+        
+    user = User.query.filter_by(name=session["name"]).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    application = JobApplication.query.get(job_id)
+    if not application:
+        return jsonify({"error": "Application not found"}), 404
+        
+    if application.user_id != user.id:
+        return jsonify({"error": "Not authorized"}), 403
+        
+    try:
+        # Update fields
+        application.title = request.form.get('title')
+        application.company = request.form.get('company')
+        application.location = request.form.get('location')
+        application.job_type = request.form.get('job_type')
+        
+        closing_date = request.form.get('closing_date')
+        if closing_date:
+            application.closing_date = datetime.strptime(closing_date, "%Y-%m-%d")
+        else:
+            application.closing_date = None
+            
+        new_status = request.form.get('status')
+        application.status = new_status
+        
+        db.session.commit()
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
