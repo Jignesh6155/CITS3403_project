@@ -310,6 +310,12 @@ def dashboard():
         reverse=True
     )[:3]
 
+<<<<<<< Updated upstream
+=======
+    # Retrieve suggested_jobs from session for the sneak peek
+    suggested_jobs = session.get('suggested_jobs', [])
+
+>>>>>>> Stashed changes
     return render_template("dashboard.html",
         name=user.name,
         in_progress=in_progress,
@@ -327,7 +333,13 @@ def dashboard():
         random_jobs=random_jobs,
         total_apps=total_apps,
         success_rate=success_rate,
+<<<<<<< Updated upstream
         leaderboard_preview=leaderboard
+=======
+        leaderboard_preview=leaderboard,
+        suggested_jobs=suggested_jobs,
+        user=user  # <-- This fixes the UndefinedError in dashboard.html
+>>>>>>> Stashed changes
     )
 
 @app.route("/logout")
