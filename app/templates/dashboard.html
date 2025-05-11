@@ -32,22 +32,31 @@
   <!-- Sneak Peek of Other Pages (Moved Up) -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <!-- Job Search Tools -->
-    <a href="{{ url_for('job_search') }}" class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl">
-      <p class="text-xs text-gray-500 mb-3">🔍 <span class="font-semibold text-indigo-800">Job Search Tools</span></p>
-      <ul class="text-sm text-gray-700 space-y-2">
-        {% for job in suggested_jobs[:3] %}
-        <li class="flex justify-between items-center">
-          <span class="truncate">{{ job.title }}</span>
-          <a href="{{ job.link }}" target="_blank" class="text-indigo-600 text-xs font-semibold hover:underline">View</a>
+    <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col max-h-[300px] min-h-[250px]">
+      <p class="text-xs text-gray-500 mb-3">🔍 <span class="font-semibold text-indigo-800">Closing Soon!</span></p>
+      <ul class="space-y-2 text-xs overflow-y-auto pr-1" style="max-height: 380px;">
+        {% set soonest_jobs = suggested_jobs|sort(attribute='closing_date') %}
+        {% for job in soonest_jobs[:5] %}
+        <li class="border border-indigo-100 p-2 rounded flex flex-col gap-1">
+          <div class="flex justify-between items-center">
+            <span class="font-semibold truncate">{{ job.title }}</span>
+            <a href="{{ job.link }}" target="_blank" class="text-indigo-600 hover:underline text-xs ml-2">View</a>
+          </div>
+          {% if job.company %}<div class="text-gray-600 text-xs truncate">{{ job.company }}</div>{% endif %}
+          {% if job.closing_in or job.closing_date %}
+          <div class="text-red-600 font-medium text-xs">
+            {{ job.closing_in }}{% if job.closing_in and job.closing_date %} • {% endif %}{{ job.closing_date }}
+          </div>
+          {% endif %}
         </li>
         {% endfor %}
-        {% if not suggested_jobs %}
+        {% if not soonest_jobs %}
         <li class="text-gray-400">No suggested jobs yet.</li>
         {% endif %}
       </ul>
-    </a>
+    </div>
     <!-- Analytics Summary -->
-    <a href="{{ url_for('analytics') }}" class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl">
+    <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col">
       <p class="text-xs text-gray-500 mb-3">📊 <span class="font-semibold text-indigo-800">Analytics Summary</span></p>
       <ul class="text-sm space-y-3">
         <li class="flex items-center justify-between">
@@ -63,9 +72,9 @@
           <span class="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-semibold">{{ success_rate }}%</span>
         </li>
       </ul>
-    </a>
+    </div>
     <!-- Friends & Leaderboard -->
-    <a href="{{ url_for('comms') }}" class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl">
+    <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col">
       <p class="text-xs text-gray-500 mb-3">👥 <span class="font-semibold text-indigo-800">Friends & Leaderboard</span></p>
       <ul class="text-sm space-y-3">
         {% set leaderboard = [user] + user.friends.all() %}
@@ -82,7 +91,7 @@
         <li class="text-gray-400">No leaderboard data.</li>
         {% endif %}
       </ul>
-    </a>
+    </div>
   </section>
   <!-- Application Insights Graphs (Now After Sneak Peek) -->
   <section class="mb-6">
@@ -114,47 +123,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  const labels = {{ status_labels | safe }};
-  const counts = {{ status_counts | safe }};
-  const colors = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#f97316', '#22d3ee'].slice(0, labels.length);
-  new Chart(document.getElementById('barChart'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Count',
-        data: counts,
-        backgroundColor: colors,
-        borderColor: colors,
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false }},
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1 } }
-      }
-    }
-  });
-  new Chart(document.getElementById('pieChart'), {
-    type: 'pie',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: counts,
-        backgroundColor: colors,
-        borderWidth: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: { mode: 'index', intersect: false }
-      }
-    }
-  });
-</script>
+<script type="application/json" id="dashboard-labels">{{ status_labels | tojson }}</script>
+<script type="application/json" id="dashboard-counts">{{ status_counts | tojson }}</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

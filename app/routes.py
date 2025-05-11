@@ -5,7 +5,7 @@ from app.models import ScrapedJob, application_shares
 from collections import Counter
 import json
 from app.utils.scraper_GC_jobs_detailed import get_jobs_full, save_jobs_to_db
-from sqlalchemy import or_
+from sqlalchemy import or_, asc
 from sqlalchemy import text
 import threading
 import queue
@@ -249,10 +249,10 @@ def signin():
 @app.route("/dashboard")
 def dashboard():
     if 'name' not in session:
-        return redirect(url_for("home"))
-    user = User.query.filter_by(name=session["name"]).first()
+        return redirect(url_for('home'))
+    user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for("home"))
+        return redirect(url_for('home'))
     applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     status_counts_dict = {status: 0 for status in all_statuses}
@@ -313,6 +313,28 @@ def dashboard():
     )[:3]
     # Retrieve suggested_jobs from session for the sneak peek
     suggested_jobs = session.get('suggested_jobs', [])
+    if not suggested_jobs:
+        # Query the 5 soonest closing jobs (with a closing_date)
+        soonest_jobs = ScrapedJob.query.filter(ScrapedJob.closing_date != None).order_by(asc(ScrapedJob.closing_date)).limit(5).all()
+        suggested_jobs = []
+        for job in soonest_jobs:
+            try:
+                about = json.loads(job.about_company) if job.about_company else []
+            except Exception:
+                about = []
+            suggested_jobs.append({
+                'title': job.title,
+                'company': about[0] if about else '',
+                'closing_in': job.closing_in,
+                'closing_date': job.closing_date.strftime('%Y-%m-%d') if job.closing_date else '',
+                'link': job.link,
+                'ai_summary': getattr(job, 'ai_summary', ''),
+                'tags': {
+                    'location': job.tag_location,
+                    'jobtype': job.tag_jobtype,
+                    'category': job.tag_category
+                }
+            })
     return render_template("dashboard.html",
         name=user.name,
         in_progress=in_progress,
