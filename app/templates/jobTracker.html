@@ -45,6 +45,9 @@
 <main class="flex-1 p-4 overflow-hidden">
   <div class="bg-white rounded-lg shadow-md h-full overflow-hidden">
     <div class="h-full overflow-x-auto">
+      <div class="flex items-center justify-between mb-4 px-4">
+        <input id="job-search-input" type="text" placeholder="Search jobs by company or title..." class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700 bg-white" />
+      </div>
       <div class="flex gap-4 p-4 h-full w-max items-stretch">
         {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
         <div id="column-{{ column }}" class="w-80 flex-shrink-0 flex flex-col h-full">
@@ -78,8 +81,15 @@
                       class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
                 Share
               </button>
-              <button onclick="openEditModal(\"{{ job.id }}\", \"{{ job.title|escape|replace('\\"', '&quot;') }}\", \"{{ job.company|escape|replace('\\"', '&quot;') }}\", \"{{ job.location|default('')|escape|replace('\\"', '&quot;') }}\", \"{{ job.job_type|default('')|escape|replace('\\"', '&quot;') }}\", \"{{ job.closing_date.strftime('%Y-%m-%d') if job.closing_date else '' }}\", \"{{ job.status|escape|replace('\\"', '&quot;') }}\")"
-                      class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded">
+              <button 
+                class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded edit-job-btn"
+                data-job-id="{{ job.id }}"
+                data-title="{{ job.title|e }}"
+                data-company="{{ job.company|e }}"
+                data-location="{{ job.location|default('')|e }}"
+                data-job_type="{{ job.job_type|default('')|e }}"
+                data-closing_date="{{ job.closing_date.strftime('%Y-%m-%d') if job.closing_date else '' }}"
+                data-status="{{ job.status|e }}">
                 Edit
               </button>
             </div>
@@ -550,6 +560,39 @@ window.addEventListener('keydown', function(e) {
     e.preventDefault();
     document.getElementById('confirm-delete-btn').click();
   }
+});
+
+// Job search filter functionality
+const searchInput = document.getElementById('job-search-input');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim().toLowerCase();
+    document.querySelectorAll('[id^="column-"]').forEach(column => {
+      column.querySelectorAll('[id^="job-"]').forEach(card => {
+        const company = card.querySelector('p.font-semibold')?.textContent.toLowerCase() || '';
+        const title = card.querySelector('p.text-gray-600')?.textContent.toLowerCase() || '';
+        if (company.includes(query) || title.includes(query)) {
+          card.style.display = '';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+}
+
+document.querySelectorAll('.edit-job-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    openEditModal(
+      this.getAttribute('data-job-id'),
+      this.getAttribute('data-title'),
+      this.getAttribute('data-company'),
+      this.getAttribute('data-location'),
+      this.getAttribute('data-job_type'),
+      this.getAttribute('data-closing_date'),
+      this.getAttribute('data-status')
+    );
+  });
 });
 </script>
 {% endblock %}
