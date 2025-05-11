@@ -226,7 +226,7 @@
             Use the dropdowns and search bar to filter jobs by <strong>Location</strong>, <strong>Opportunity Type</strong>, or <strong>Category</strong>.
             <br><br>
             Click <strong>Search Web</strong> to scrape the internet for matching listings using your filters.
-            <strong>Be patient</strong>, this may take a moment.
+            <strong>Be patient</strong>, this may take a moment. Note you <strong>don't have to stay</strong> on this page after initiating the search.
           </div>
         </div>
 
@@ -545,11 +545,28 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Received jobs data:', data);
         hasMore = data.has_more;
         if (reset) {
-          jobs = data.jobs;
+          jobs = data.jobs.slice();
+          jobs.sort((a, b) => {
+            // Parse closing_date as Date, nulls last
+            const aDate = a.closing_date ? new Date(a.closing_date) : null;
+            const bDate = b.closing_date ? new Date(b.closing_date) : null;
+            if (aDate && bDate) return aDate - bDate;
+            if (aDate && !bDate) return -1;
+            if (!aDate && bDate) return 1;
+            return 0;
+          });
           renderJobs(jobs);
         } else {
           jobs = jobs.concat(data.jobs);
-          renderJobs(data.jobs, true);
+          jobs.sort((a, b) => {
+            const aDate = a.closing_date ? new Date(a.closing_date) : null;
+            const bDate = b.closing_date ? new Date(b.closing_date) : null;
+            if (aDate && bDate) return aDate - bDate;
+            if (aDate && !bDate) return -1;
+            if (!aDate && bDate) return 1;
+            return 0;
+          });
+          renderJobs(jobs, true);
         }
       })
       .catch(error => {

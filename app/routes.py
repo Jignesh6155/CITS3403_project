@@ -83,17 +83,40 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                 try:
                     closing_in = job.get("closing_in", "")
                     closing_date = None
-                    
-                    # Extract days if present in closing_in
+                    # Estimate closing_date from closing_in
                     if closing_in:
-                        days_match = re.search(r'(\d+)\s*days?', closing_in.lower())
-                        if days_match:
+                        closing_in_lower = closing_in.lower()
+                        now = datetime.now(perth_tz)
+                        days_match = re.search(r'(\d+)\s*days?', closing_in_lower)
+                        months_match = re.search(r'(\d+)\s*months?', closing_in_lower)
+                        hours_match = re.search(r'(\d+)\s*hours?', closing_in_lower)
+                        if 'an hour' in closing_in_lower:
+                            closing_date = now  # Same day
+                            closing_in = "Closing in 1 hour"
+                        elif hours_match:
+                            closing_date = now  # Same day
+                            hours = int(hours_match.group(1))
+                            closing_in = f"Closing in {hours} hours"
+                        elif 'a day' in closing_in_lower:
+                            closing_date = now + timedelta(days=1)
+                            closing_in = "Closing in 1 day"
+                        elif days_match:
                             days = int(days_match.group(1))
-                            # Calculate closing date in Perth timezone
-                            now = datetime.now(perth_tz)
                             closing_date = now + timedelta(days=days)
-                            # Format closing_in consistently
                             closing_in = f"Closing in {days} days"
+                        elif 'a month' in closing_in_lower:
+                            # Add 1 month (approximate as 30 days)
+                            closing_date = now + timedelta(days=30)
+                            closing_in = "Closing in 1 month"
+                        elif months_match:
+                            months = int(months_match.group(1))
+                            # Add months (approximate as 30 days per month)
+                            closing_date = now + timedelta(days=30*months)
+                            closing_in = f"Closing in {months} months"
+                        elif closing_in_lower.strip() == 'n/a':
+                            closing_date = None  # No estimate possible
+                        else:
+                            closing_date = None  # Unknown format, leave as None
                     
                     # Save to DB
                     print(f"[DEBUG] Saving job {i+1}/{len(jobs)} to database: {job.get('title')}")
@@ -342,7 +365,7 @@ def analytics():
     user = User.query.filter_by(name=session["name"]).first()
     if not user:
         return redirect(url_for("home"))
-    # --- grab all of this user’s applications ----------------------------
+    # --- grab all of this user's applications ----------------------------
     applications = JobApplication.query.filter_by(user=user).all()
     total_apps   = len(applications)
     # quick counters -------------------------------------------------------
