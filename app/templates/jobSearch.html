@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (reset) {
           jobs = data.jobs.slice();
           jobs.sort((a, b) => {
-            // Parse closing_date as Date, nulls last
+            // Only sort by closing_date (earliest first), nulls last
             const aDate = a.closing_date ? new Date(a.closing_date) : null;
             const bDate = b.closing_date ? new Date(b.closing_date) : null;
             if (aDate && bDate) return aDate - bDate;
@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!aDate && bDate) return 1;
             return 0;
           });
-          renderJobs(jobs, true);
+          renderJobs(jobs);
         }
       })
       .catch(error => {

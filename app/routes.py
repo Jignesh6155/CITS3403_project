@@ -105,12 +105,10 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                             closing_date = now + timedelta(days=days)
                             closing_in = f"Closing in {days} days"
                         elif 'a month' in closing_in_lower:
-                            # Add 1 month (approximate as 30 days)
                             closing_date = now + timedelta(days=30)
                             closing_in = "Closing in 1 month"
                         elif months_match:
                             months = int(months_match.group(1))
-                            # Add months (approximate as 30 days per month)
                             closing_date = now + timedelta(days=30*months)
                             closing_in = f"Closing in {months} months"
                         elif closing_in_lower.strip() == 'n/a':
