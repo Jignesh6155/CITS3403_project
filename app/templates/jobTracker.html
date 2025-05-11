@@ -7,100 +7,98 @@
   <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200">
     <div class="flex justify-between items-center">
       <h1 class="text-xl font-semibold text-indigo-900">Your Job Tracker</h1>
-      <div class="flex gap-4 items-center">
-        <!-- Column Visibility Dropdown -->
-        <div class="relative" id="columnToggleDropdown">
-          <button onclick="toggleDropdown()" 
-                  class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none">
-            <span class="text-sm text-gray-700">Show/Hide Columns</span>
-            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div id="columnDropdown" 
-               class="hidden absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-            <div class="p-3 space-y-2">
-              {% for col in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
-              <label class="flex items-center justify-between hover:bg-gray-50 px-3 py-2 rounded cursor-pointer">
-                <span class="text-sm text-gray-700">{{ col }}</span>
-                <input type="checkbox" 
-                       class="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" 
-                       checked 
-                       onchange="toggleColumn('{{ col }}')" 
-                       data-column="{{ col }}">
-              </label>
-              {% endfor %}
+      <div class="flex w-full max-w-4xl items-center">
+        <input id="job-search-input" type="text" placeholder="Search..." class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700 bg-white mr-6" />
+        <div class="flex gap-4 items-center ml-auto">
+          <div class="relative" id="columnToggleDropdown">
+            <button onclick="toggleDropdown()"
+                    class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none">
+              <span class="text-sm text-gray-700">Show/Hide Columns</span>
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div id="columnDropdown"
+                 class="hidden absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div class="p-3 space-y-2">
+                {% for col in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
+                <label class="flex items-center justify-between hover:bg-gray-50 px-3 py-2 rounded cursor-pointer">
+                  <span class="text-sm text-gray-700">{{ col }}</span>
+                  <input type="checkbox"
+                         class="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                         checked
+                         onchange="toggleColumn('{{ col }}')"
+                         data-column="{{ col }}">
+                </label>
+                {% endfor %}
+              </div>
             </div>
           </div>
+          <button id="openModal" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            + Add Application
+          </button>
         </div>
-        
-        <button id="openModal" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-          + Add Application
-        </button>
       </div>
     </div>
   </header>
 
   <!-- TABLE -->
-<main class="flex-1 p-4 overflow-hidden">
-  <div class="bg-white rounded-lg shadow-md h-full overflow-hidden">
-    <div class="h-full overflow-x-auto">
-      <div class="flex items-center justify-between mb-4 px-4">
-        <input id="job-search-input" type="text" placeholder="Search jobs by company or title..." class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700 bg-white" />
-      </div>
-      <div class="flex gap-4 p-4 h-full w-max items-stretch">
-        {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
-        <div id="column-{{ column }}" class="w-80 flex-shrink-0 flex flex-col h-full">
-          <div class="bg-indigo-100 px-4 py-2 text-sm text-gray-600 font-semibold rounded-t sticky top-0 z-10">
-            {{ column }}
-          </div>
-          <div id="{{ column }}" 
-               ondragover="event.preventDefault()" 
-               ondrop="onDrop(event, '{{ column }}')" 
-               class="flex-1 bg-gray-50 rounded-b p-2 border border-gray-200 overflow-y-auto">
-            {% for job in grouped[column] %}
-            <div id="job-{{ job.id }}" 
-                 draggable="true" 
-                 ondragstart="onDragStart(event)" 
-                 class="bg-white p-4 rounded-lg shadow mb-2 relative cursor-move hover:shadow-md transition-shadow">
-              <button onclick="confirmDeleteJob('job-{{ job.id }}')" 
-                      class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
-              <p class="font-semibold text-indigo-800">{{ job.company }}</p>
-              <p class="text-gray-600">{{ job.title }}</p>
-              {% if job.location %}
-              <p class="text-xs text-gray-500 mt-1">📍 {{ job.location }}</p>
-              {% endif %}
-              {% if job.job_type %}
-              <p class="text-xs text-gray-500">💼 {{ job.job_type }}</p>
-              {% endif %}
-              {% if job.closing_date %}
-              <p class="text-xs text-red-600 mt-1">Closes: {{ job.closing_date.strftime('%d %b %Y') }}</p>
-              {% endif %}
-              <p class="text-xs text-gray-400 mt-1">Added: {{ job.date_applied.strftime('%Y-%m-%d') }}</p>
-              <button onclick="openShareModal('{{ job.id }}')"
-                      class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
-                Share
-              </button>
-              <button 
-                class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded edit-job-btn"
-                data-job-id="{{ job.id }}"
-                data-title="{{ job.title|e }}"
-                data-company="{{ job.company|e }}"
-                data-location="{{ job.location|default('')|e }}"
-                data-job_type="{{ job.job_type|default('')|e }}"
-                data-closing_date="{{ job.closing_date.strftime('%Y-%m-%d') if job.closing_date else '' }}"
-                data-status="{{ job.status|e }}">
-                Edit
-              </button>
+  <main class="flex-1 p-4 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-md h-full overflow-hidden">
+      <div class="h-full overflow-x-auto">
+        <div class="flex gap-4 p-4 h-full w-max items-stretch">
+          {% for column in ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"] %}
+          <div id="column-{{ column }}" class="w-80 flex-shrink-0 flex flex-col h-full">
+            <div class="bg-indigo-100 px-4 py-2 text-sm text-gray-600 font-semibold rounded-t sticky top-0 z-10">
+              {{ column }}
             </div>
-            {% endfor %}
+            <div id="{{ column }}" 
+                 ondragover="event.preventDefault()" 
+                 ondrop="onDrop(event, '{{ column }}')" 
+                 class="flex-1 bg-gray-50 rounded-b p-2 border border-gray-200 overflow-y-auto">
+              {% for job in grouped[column] %}
+              <div id="job-{{ job.id }}" 
+                   draggable="true" 
+                   ondragstart="onDragStart(event)" 
+                   class="bg-white p-4 rounded-lg shadow mb-2 relative cursor-move hover:shadow-md transition-shadow">
+                <button onclick="confirmDeleteJob('job-{{ job.id }}')" 
+                        class="absolute top-1 right-2 text-red-500 hover:text-red-700 text-lg font-bold">&times;</button>
+                <p class="font-semibold text-indigo-800">{{ job.company }}</p>
+                <p class="text-gray-600">{{ job.title }}</p>
+                {% if job.location %}
+                <p class="text-xs text-gray-500 mt-1">📍 {{ job.location }}</p>
+                {% endif %}
+                {% if job.job_type %}
+                <p class="text-xs text-gray-500">💼 {{ job.job_type }}</p>
+                {% endif %}
+                {% if job.closing_date %}
+                <p class="text-xs text-red-600 mt-1">Closes: {{ job.closing_date.strftime('%d %b %Y') }}</p>
+                {% endif %}
+                <p class="text-xs text-gray-400 mt-1">Added: {{ job.date_applied.strftime('%Y-%m-%d') }}</p>
+                <button onclick="openShareModal('{{ job.id }}')"
+                        class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded">
+                  Share
+                </button>
+                <button 
+                  class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded edit-job-btn"
+                  data-job-id="{{ job.id }}"
+                  data-title="{{ job.title|e }}"
+                  data-company="{{ job.company|e }}"
+                  data-location="{{ job.location|default('')|e }}"
+                  data-job_type="{{ job.job_type|default('')|e }}"
+                  data-closing_date="{{ job.closing_date.strftime('%Y-%m-%d') if job.closing_date else '' }}"
+                  data-status="{{ job.status|e }}">
+                  Edit
+                </button>
+              </div>
+              {% endfor %}
+            </div>
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
     </div>
-  </div>
-</main>
+  </main>
 
 
   <!-- Add Application Modal -->
