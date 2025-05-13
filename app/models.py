@@ -8,15 +8,13 @@ db = SQLAlchemy()
 application_shares = db.Table('application_shares',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('job_application_id', db.Integer, db.ForeignKey('job_application.id'), primary_key=True),
-    db.Column('status', db.String(20), default='active')
+    db.Column('status', db.String(20), default='active')  # Add this line
 )
 
 # Association table for user friendships
 friendships = db.Table('friendships',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-    db.Column('friend_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-    db.Column('is_favorite', db.Boolean, default=False),
-    db.Column('last_interaction', db.DateTime, default=datetime.utcnow)
+    db.Column('friend_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
 )
 
 class User(db.Model):
@@ -24,7 +22,6 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
-    
     # Relationships
     job_applications = db.relationship('JobApplication', backref='user', lazy=True)
     job_searches = db.relationship('JobSearch', backref='user', lazy=True)
@@ -34,7 +31,6 @@ class User(db.Model):
         secondary=application_shares,
         backref=db.backref('shared_with', lazy='dynamic')
     )
-    
     # Friends relationship (self-referential many-to-many)
     friends = db.relationship(
         'User',
@@ -44,43 +40,6 @@ class User(db.Model):
         backref=db.backref('friend_of', lazy='dynamic'),
         lazy='dynamic'
     )
-    
-    def get_favorite_friends(self):
-        """Get all favorite friends"""
-        return self.friends.filter(friendships.c.is_favorite == True).all()
-    
-    def get_recent_contacts(self, limit=10):
-        """Get most recently interacted friends"""
-        return self.friends.order_by(friendships.c.last_interaction.desc()).limit(limit).all()
-    
-    def update_friend_interaction(self, friend_id):
-        """Update the last interaction time with a friend"""
-        db.session.execute(
-            friendships.update()
-            .where(friendships.c.user_id == self.id)
-            .where(friendships.c.friend_id == friend_id)
-            .values(last_interaction=datetime.utcnow())
-        )
-        db.session.commit()
-    
-    def toggle_favorite_friend(self, friend_id):
-        """Toggle favorite status for a friend"""
-        current_status = db.session.execute(
-            friendships.select()
-            .where(friendships.c.user_id == self.id)
-            .where(friendships.c.friend_id == friend_id)
-        ).fetchone()
-        
-        if current_status:
-            db.session.execute(
-                friendships.update()
-                .where(friendships.c.user_id == self.id)
-                .where(friendships.c.friend_id == friend_id)
-                .values(is_favorite=not current_status.is_favorite)
-            )
-            db.session.commit()
-            return True
-        return False
 
 class JobApplication(db.Model):
     id = db.Column(db.Integer, primary_key=True)
