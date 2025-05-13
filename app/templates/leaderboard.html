@@ -1,6 +1,8 @@
 <!-- Leaderboard Component -->
-<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 flex flex-col h-full min-h-0">
   <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Leaderboard</h2>
+  <div class="overflow-y-auto flex-1 min-h-0">
+
   <ul class="space-y-3 text-sm">
     {% set user_friends = user.friends.all() %}
     {% set all_users = [user] + user_friends %}
@@ -27,4 +29,5 @@
       <li class="text-gray-400 text-center py-4">No data available yet.</li>
     {% endif %}
   </ul>
+  </div>
 </section>

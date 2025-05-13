@@ -1,5 +1,5 @@
 <!-- Shared Applications Component -->
-<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 flex flex-col h-full">
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 flex flex-col h-full min-h-0">
   <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
 
   <!-- Filters -->
@@ -26,7 +26,7 @@
   </div>
 
   <!-- Shared Apps List Container -->
-  <div class="overflow-y-auto flex-1 border border-gray-200 rounded mb-4">
+  <div class="overflow-y-auto flex-1 min-h-0 border border-gray-200 rounded mb-4">
     <!-- Active Applications List -->
     <ul class="space-y-3 p-4 tab-content h-full" id="active-applications">
       {% set active_apps = [] %}
