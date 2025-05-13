@@ -3,12 +3,26 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Good afternoon, {{ name }} 👋</h1>
+  <h1 class="text-xl font-semibold text-indigo-900 flex items-center gap-2">
+    Welcome to CareerLink, {{ name }} 👋
+  <!-- Help Icon with Tooltip -->
+  <div class="relative group">
+    <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
+    <div class="absolute top-7 left-0 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
+      <strong class="block mb-1 text-indigo-700">How to Use Dashboard</strong>
+      Quickly view your job search progress, upcoming interviews, and earned achievements.<br><br>
+      Use this overview to stay organized and focused on your career goals.<br><br>
+      Explore insights and track milestones to keep your job search on track! 🚀
+    </div>
+  </div>
+  </h1>
+
   <div class="flex gap-4 items-center">
     {% include 'notifications.html' %}
     <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
   </div>
 </header>
+
 <main class="flex-1 p-6 overflow-y-auto">
   <!-- Quick Stats -->
   <div class="flex flex-wrap gap-6 mb-6">
@@ -29,7 +43,8 @@
       <p class="text-2xl font-bold">{{ badges_earned }}</p>
     </div>
   </div>
-  <!-- Sneak Peek of Other Pages (Moved Up) -->
+
+  <!-- Sneak Peek of Other Pages -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <!-- Job Search Tools -->
     <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col max-h-[300px] min-h-[250px]">
@@ -55,6 +70,7 @@
         {% endif %}
       </ul>
     </div>
+
     <!-- Analytics Summary -->
     <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col">
       <p class="text-xs text-gray-500 mb-3">📊 <span class="font-semibold text-indigo-800">Analytics Summary</span></p>
@@ -73,6 +89,7 @@
         </li>
       </ul>
     </div>
+
     <!-- Friends & Leaderboard -->
     <div class="bg-white p-6 shadow-md border hover:bg-indigo-50 transition rounded-2xl flex flex-col">
       <p class="text-xs text-gray-500 mb-3">👥 <span class="font-semibold text-indigo-800">Friends & Leaderboard</span></p>
@@ -93,7 +110,8 @@
       </ul>
     </div>
   </section>
-  <!-- Application Insights Graphs (Now After Sneak Peek) -->
+
+  <!-- Application Insights Graphs -->
   <section class="mb-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Application Insights 📊</h2>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -107,7 +125,8 @@
       </div>
     </div>
   </section>
-  <!-- Achievements (Moved to Bottom) -->
+
+  <!-- Achievements -->
   <section class="mb-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Achievements Unlocked ({{ badges_earned }}) 🏆</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -121,6 +140,7 @@
   </section>
 </main>
 {% endblock %}
+
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script type="application/json" id="dashboard-labels">{{ status_labels | tojson }}</script>

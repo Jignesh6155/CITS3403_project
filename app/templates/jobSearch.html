@@ -5,11 +5,23 @@
 
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Career Explorer</h1>
+  <div class="flex items-center gap-2">
+    <h1 class="text-xl font-semibold text-indigo-900">Career Explorer</h1>
+    <!-- Help Icon with Tooltip -->
+    <div class="relative group">
+      <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
+      <div class="absolute top-7 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
+        <strong class="block mb-1 text-indigo-700">How to Use JobSearch</strong>
+        placeholder<br><br>
+        placeholder.<br><br>
+        placeholder 🚀
+      </div>
+    </div>
+  </div>
   <div class="flex gap-4 items-center">
     {% include 'notifications.html' %}
-  <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
-</div>
+    <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+  </div>
 </header>
 
 <div class="flex-1 overflow-auto">
