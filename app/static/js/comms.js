@@ -1,11 +1,12 @@
 /**
  * CareerLink Friends and Shared Applications
  * Common JavaScript for the comms page functionality
+ * Enhanced with alphabetical indexing and pagination for friends list
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Friend search functionality
-  initFriendSearch();
+  // Initialize enhanced friends list with alphabetical indexing and pagination
+  initEnhancedFriendsList();
   
   // Tab switching for shared applications
   initTabSwitching();
@@ -15,64 +16,230 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Initialize the friend search functionality
+ * Initialize the enhanced friends list with alphabetical indexing and pagination
  */
-function initFriendSearch() {
-  const friendSearchInput = document.getElementById('friend-search');
-  if (!friendSearchInput) return;
+function initEnhancedFriendsList() {
+  // Get elements
+  const friendsList = document.getElementById('friends-list');
+  const searchInput = document.getElementById('friend-search');
+  const alphabetButtons = document.querySelectorAll('.alphabet-filter');
+  const prevPageBtn = document.getElementById('prev-page');
+  const nextPageBtn = document.getElementById('next-page');
+  const pageIndicator = document.getElementById('page-indicator');
+  const friendsPerPageSelect = document.getElementById('friends-per-page');
+  const friendsCountDisplay = document.getElementById('friends-count');
+  const noFriendsMessage = document.getElementById('no-friends');
   
-  friendSearchInput.addEventListener('input', function() {
-    const searchTerm = this.value.trim().toLowerCase();
-    const friendItems = document.querySelectorAll('#friends-list .friend-item');
-    const pendingItems = document.querySelectorAll('#pending-requests-list .friend-item');
+  // If elements don't exist, exit early
+  if (!friendsList || !alphabetButtons.length) return;
+  
+  // Variables to track state
+  let currentPage = 1;
+  let itemsPerPage = parseInt(friendsPerPageSelect.value);
+  let currentLetter = 'all';
+  let searchTerm = '';
+  
+  // Get all friend items
+  const allFriends = Array.from(friendsList.querySelectorAll('.friend-item'));
+  
+  // Function to filter friends
+  function filterFriends() {
+    let filteredFriends = allFriends;
     
-    let friendsFound = false;
-    let pendingFound = false;
-    
-    // Filter friends list
-    friendItems.forEach(item => {
-      const name = item.getAttribute('data-name');
-      if (name.includes(searchTerm)) {
-        item.style.display = '';
-        friendsFound = true;
-      } else {
-        item.style.display = 'none';
-      }
-    });
-    
-    // Filter pending requests
-    pendingItems.forEach(item => {
-      const name = item.getAttribute('data-name');
-      if (name.includes(searchTerm)) {
-        item.style.display = '';
-        pendingFound = true;
-      } else {
-        item.style.display = 'none';
-      }
-    });
-    
-    // Toggle "no results" messages
-    const noFriendsMsg = document.getElementById('no-friends');
-    const noPendingMsg = document.getElementById('no-pending-requests');
-    
-    if (noFriendsMsg) {
-      noFriendsMsg.style.display = friendsFound ? 'none' : '';
-      if (!friendsFound && searchTerm) {
-        noFriendsMsg.textContent = 'No friends match your search';
-      } else {
-        noFriendsMsg.textContent = 'No friends yet';
-      }
+    // Apply letter filter
+    if (currentLetter !== 'all') {
+      filteredFriends = filteredFriends.filter(friend => {
+        return friend.getAttribute('data-first-letter') === currentLetter;
+      });
     }
     
-    if (noPendingMsg) {
-      noPendingMsg.style.display = pendingFound ? 'none' : '';
-      if (!pendingFound && searchTerm) {
-        noPendingMsg.textContent = 'No pending requests match your search';
-      } else {
-        noPendingMsg.textContent = 'No pending requests';
+    // Apply search filter
+    if (searchTerm) {
+      filteredFriends = filteredFriends.filter(friend => {
+        const name = friend.getAttribute('data-name');
+        return name.includes(searchTerm.toLowerCase());
+      });
+    }
+    
+    // Display total count
+    updateFriendsCount(filteredFriends.length);
+    
+    // Paginate the results
+    paginateFriends(filteredFriends);
+    
+    // Show/hide no friends message
+    if (filteredFriends.length === 0) {
+      if (noFriendsMessage) {
+        noFriendsMessage.style.display = '';
+        noFriendsMessage.textContent = searchTerm 
+          ? 'No friends match your search' 
+          : (currentLetter !== 'all' 
+              ? `No friends starting with "${currentLetter}"` 
+              : 'No friends yet');
       }
+    } else if (noFriendsMessage) {
+      noFriendsMessage.style.display = 'none';
+    }
+  }
+  
+  // Function to paginate friends
+  function paginateFriends(friends) {
+    // Hide all friends first
+    allFriends.forEach(friend => {
+      friend.style.display = 'none';
+    });
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(friends.length / itemsPerPage);
+    
+    // Adjust current page if needed
+    if (currentPage > totalPages) {
+      currentPage = Math.max(1, totalPages);
+    }
+    
+    // Update page indicator
+    pageIndicator.textContent = totalPages > 0 
+      ? `Page ${currentPage} of ${totalPages}` 
+      : 'Page 1';
+    
+    // Update pagination buttons
+    prevPageBtn.disabled = currentPage <= 1;
+    nextPageBtn.disabled = currentPage >= totalPages;
+    
+    // Show current page
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, friends.length);
+    
+    for (let i = startIndex; i < endIndex; i++) {
+      friends[i].style.display = '';
+    }
+  }
+  
+  // Function to update the friends count display
+  function updateFriendsCount(count) {
+    const total = allFriends.length;
+    
+    if (count === total) {
+      friendsCountDisplay.textContent = `Showing all ${total} friend${total !== 1 ? 's' : ''}`;
+    } else {
+      friendsCountDisplay.textContent = `Showing ${count} of ${total} friend${total !== 1 ? 's' : ''}`;
+    }
+  }
+  
+  // Event listeners for alphabet filter
+  alphabetButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Update active state
+      alphabetButtons.forEach(btn => btn.classList.remove('active', 'bg-indigo-100', 'text-indigo-800'));
+      alphabetButtons.forEach(btn => btn.classList.add('bg-gray-100', 'text-gray-800'));
+      this.classList.remove('bg-gray-100', 'text-gray-800');
+      this.classList.add('active', 'bg-indigo-100', 'text-indigo-800');
+      
+      // Update current letter
+      currentLetter = this.getAttribute('data-letter');
+      
+      // Reset to first page
+      currentPage = 1;
+      
+      // Apply filters
+      filterFriends();
+    });
+  });
+  
+  // Event listener for search
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      searchTerm = this.value.trim();
+      currentPage = 1; // Reset to first page when search changes
+      filterFriends();
+      
+      // Also filter pending requests
+      filterPendingRequests(searchTerm);
+    });
+  }
+  
+  // Event listeners for pagination
+  prevPageBtn.addEventListener('click', function() {
+    if (currentPage > 1) {
+      currentPage--;
+      filterFriends();
     }
   });
+  
+  nextPageBtn.addEventListener('click', function() {
+    const filteredFriends = getFilteredFriends();
+    const totalPages = Math.ceil(filteredFriends.length / itemsPerPage);
+    
+    if (currentPage < totalPages) {
+      currentPage++;
+      filterFriends();
+    }
+  });
+  
+  // Event listener for items per page
+  friendsPerPageSelect.addEventListener('change', function() {
+    itemsPerPage = parseInt(this.value);
+    currentPage = 1; // Reset to first page when changing items per page
+    filterFriends();
+  });
+  
+  // Helper function to get currently filtered friends
+  function getFilteredFriends() {
+    let filteredFriends = allFriends;
+    
+    // Apply letter filter
+    if (currentLetter !== 'all') {
+      filteredFriends = filteredFriends.filter(friend => {
+        return friend.getAttribute('data-first-letter') === currentLetter;
+      });
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredFriends = filteredFriends.filter(friend => {
+        const name = friend.getAttribute('data-name');
+        return name.includes(searchTerm.toLowerCase());
+      });
+    }
+    
+    return filteredFriends;
+  }
+  
+  // Initialize the view
+  filterFriends();
+}
+
+/**
+ * Filter pending requests based on search term
+ */
+function filterPendingRequests(searchTerm) {
+  const pendingItems = document.querySelectorAll('#pending-requests-list .friend-item');
+  if (!pendingItems.length) return;
+  
+  let pendingFound = false;
+  
+  // Filter pending requests
+  pendingItems.forEach(item => {
+    const name = item.getAttribute('data-name');
+    if (name.includes(searchTerm.toLowerCase())) {
+      item.style.display = '';
+      pendingFound = true;
+    } else {
+      item.style.display = 'none';
+    }
+  });
+  
+  // Toggle "no results" message
+  const noPendingMsg = document.getElementById('no-pending-requests');
+  
+  if (noPendingMsg) {
+    noPendingMsg.style.display = pendingFound ? 'none' : '';
+    if (!pendingFound && searchTerm) {
+      noPendingMsg.textContent = 'No pending requests match your search';
+    } else {
+      noPendingMsg.textContent = 'No pending requests';
+    }
+  }
 }
 
 /**
@@ -111,13 +278,15 @@ function switchTab(tabName) {
  * Filter applications based on search, job type, and friend
  */
 function filterApplications() {
-  const searchTerm = document.getElementById('job-search').value.toLowerCase();
-  const jobTypeFilter = document.getElementById('job-type-filter').value.toLowerCase();
-  const friendFilter = document.getElementById('friend-filter').value.toLowerCase();
+  const searchTerm = document.getElementById('job-search')?.value.toLowerCase() || '';
+  const jobTypeFilter = document.getElementById('job-type-filter')?.value.toLowerCase() || '';
+  const friendFilter = document.getElementById('friend-filter')?.value.toLowerCase() || '';
   
   // Determine which tab is active
-  const activeTabId = document.querySelector('.tab-btn.border-indigo-500').id.replace('-tab', '');
+  const activeTabId = document.querySelector('.tab-btn.border-indigo-500')?.id.replace('-tab', '') || 'active';
   const applicationsContainer = document.getElementById(`${activeTabId}-applications`);
+  if (!applicationsContainer) return;
+  
   const applications = Array.from(applicationsContainer.querySelectorAll('.app-item'));
   
   // If no applications, exit early
@@ -214,7 +383,7 @@ function initShareModal() {
       
       // Enable/disable the submit button based on whether any friends are visible
       const submitBtn = document.getElementById('share-submit-btn');
-      submitBtn.disabled = !anyVisible;
+      if (submitBtn) submitBtn.disabled = !anyVisible;
       
       // If we have a "no friends" message, update it
       const noFriendsMsg = document.querySelector('#share-friends-list .py-4');
@@ -237,7 +406,7 @@ function initShareModal() {
   friendItems.forEach(item => {
     item.addEventListener('click', function() {
       const radio = this.querySelector('input[type="radio"]');
-      radio.checked = true;
+      if (radio) radio.checked = true;
       
       // Highlight the selected item
       document.querySelectorAll('.share-friend-item').forEach(el => {
@@ -284,7 +453,8 @@ function initShareModal() {
  */
 function openShareModal(appId) {
   currentAppId = appId;
-  document.getElementById('shareModal').classList.remove('hidden');
+  const shareModal = document.getElementById('shareModal');
+  if (shareModal) shareModal.classList.remove('hidden');
   
   // Clear any previous search
   const searchInput = document.getElementById('share-friend-search');
@@ -296,7 +466,8 @@ function openShareModal(appId) {
   // Clear any previous selection
   document.querySelectorAll('.share-friend-item').forEach(el => {
     el.classList.remove('bg-indigo-50');
-    el.querySelector('input[type="radio"]').checked = false;
+    const radio = el.querySelector('input[type="radio"]');
+    if (radio) radio.checked = false;
   });
 }
 
@@ -304,7 +475,8 @@ function openShareModal(appId) {
  * Close the share modal
  */
 function closeShareModal() {
-  document.getElementById('shareModal').classList.add('hidden');
+  const shareModal = document.getElementById('shareModal');
+  if (shareModal) shareModal.classList.add('hidden');
   currentAppId = null;
 }
 
@@ -314,6 +486,8 @@ function closeShareModal() {
  */
 function saveApplication(appId) {
   const button = document.getElementById(`save-btn-${appId}`);
+  if (!button) return;
+  
   button.disabled = true;
   button.textContent = 'Saving...';
   button.classList.add('opacity-75');
@@ -329,14 +503,17 @@ function saveApplication(appId) {
     if (data.success) {
       // Move the item from active to archived tab
       const appItem = document.getElementById(`shared-app-${appId}`);
+      if (!appItem) return;
+      
       const archivedList = document.getElementById('archived-applications');
+      if (!archivedList) return;
       
       // Clone the app item for the archived section
       const archivedItem = appItem.cloneNode(true);
       
       // Remove the save button and add "Saved" label
-      const buttonContainer = archivedItem.querySelector('.save-app-btn').parentNode;
-      archivedItem.querySelector('.save-app-btn').remove();
+      const saveButton = archivedItem.querySelector('.save-app-btn');
+      if (saveButton) saveButton.remove();
       
       // Add saved indicator
       const savedIndicator = document.createElement('span');
@@ -352,7 +529,7 @@ function saveApplication(appId) {
       
       // Check if active list is empty
       const activeList = document.getElementById('active-applications');
-      if (activeList.querySelectorAll('.app-item').length === 0) {
+      if (activeList && activeList.querySelectorAll('.app-item').length === 0) {
         const emptyMessage = document.createElement('li');
         emptyMessage.className = 'empty-message text-gray-400 text-center py-4';
         emptyMessage.textContent = 'No active shared applications.';
@@ -370,9 +547,11 @@ function saveApplication(appId) {
   })
   .catch(error => {
     console.error('Error:', error);
-    button.disabled = false;
-    button.textContent = 'Save to Tracker';
-    button.classList.remove('opacity-75');
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Save to Tracker';
+      button.classList.remove('opacity-75');
+    }
     showToast(error.message || 'Failed to save application', 'error');
   });
 }
