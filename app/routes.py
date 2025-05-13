@@ -477,10 +477,13 @@ def comms():
     # Get app statuses using raw SQL with proper text() wrapper
     app_statuses = {}
     for app in shared_apps:
+        # Use text() and parameter binding for safety
         result = db.session.execute(
             text("SELECT status FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
             {"user_id": user.id, "app_id": app.id}
         ).fetchone()
+        
+        # Default to 'active' if no status found
         status = result[0] if result else 'active'
         app_statuses[app.id] = status
     
@@ -489,16 +492,8 @@ def comms():
         receiver_id=user.id, status='pending'
     ).all()
     
-    # Get the current user's friends with category information
+    # Get the current user's friends
     user_friends = user.friends.all()
-    favorite_friends = user.get_favorite_friends()
-    recent_contacts = user.get_recent_contacts()
-    
-    # Create a dictionary of friend categories
-    friend_categories = {
-        'favorites': [f.id for f in favorite_friends],
-        'recent': [f.id for f in recent_contacts]
-    }
     
     return render_template(
         "comms.html",
@@ -507,8 +502,7 @@ def comms():
         current_user=user,
         shared_apps=shared_apps,
         app_statuses=app_statuses,
-        pending_requests=pending_requests,
-        friend_categories=friend_categories
+        pending_requests=pending_requests
     )
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -1071,47 +1065,3 @@ def update_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
-@app.route('/toggle-favorite-friend/<int:friend_id>', methods=['POST'])
-def toggle_favorite_friend(friend_id):
-    if 'name' not in session:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-    current_user = User.query.filter_by(name=session['name']).first()
-    if not current_user:
-        return jsonify({'success': False, 'error': 'User not found'}), 404
-        
-    success = current_user.toggle_favorite_friend(friend_id)
-    if success:
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'Friend not found'}), 404
-
-@app.route('/update-friend-interaction/<int:friend_id>', methods=['POST'])
-def update_friend_interaction(friend_id):
-    if 'name' not in session:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-    current_user = User.query.filter_by(name=session['name']).first()
-    if not current_user:
-        return jsonify({'success': False, 'error': 'User not found'}), 404
-        
-    current_user.update_friend_interaction(friend_id)
-    return jsonify({'success': True})
-
-@app.route('/get-friend-categories', methods=['GET'])
-def get_friend_categories():
-    if 'name' not in session:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-        
-    current_user = User.query.filter_by(name=session['name']).first()
-    if not current_user:
-        return jsonify({'success': False, 'error': 'User not found'}), 404
-        
-    favorites = current_user.get_favorite_friends()
-    recent = current_user.get_recent_contacts()
-    
-    return jsonify({
-        'success': True,
-        'favorites': [{'id': f.id, 'name': f.name} for f in favorites],
-        'recent': [{'id': f.id, 'name': f.name} for f in recent]
-    })
