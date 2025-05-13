@@ -1,0 +1,30 @@
+<!-- Leaderboard Component -->
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Leaderboard</h2>
+  <ul class="space-y-3 text-sm">
+    {% set user_friends = user.friends.all() %}
+    {% set all_users = [user] + user_friends %}
+    
+    {% set leaderboard = [] %}
+    {% for u in all_users %}
+      {% set application_count = u.job_applications|length %}
+      {% set temp = leaderboard.append({'name': u.name, 'apps_count': application_count, 'is_current_user': u.id == user.id}) %}
+    {% endfor %}
+    
+    {% set sorted_leaderboard = leaderboard|sort(attribute='apps_count', reverse=true) %}
+    
+    {% for entry in sorted_leaderboard %}
+      <li class="{% if entry.is_current_user %}bg-indigo-50{% else %}bg-gray-50{% endif %} px-4 py-3 rounded-md flex justify-between">
+        <span>
+          {% if loop.index == 1 %}🏆{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}.{% endif %}
+          <strong>{% if entry.is_current_user %}You{% else %}{{ entry.name }}{% endif %}</strong>
+        </span>
+        <span class="font-medium">{{ entry.apps_count }} applications</span>
+      </li>
+    {% endfor %}
+    
+    {% if not sorted_leaderboard %}
+      <li class="text-gray-400 text-center py-4">No data available yet.</li>
+    {% endif %}
+  </ul>
+</section>

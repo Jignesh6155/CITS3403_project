@@ -1,0 +1,64 @@
+<!-- Friends List Component -->
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Friends</h2>
+  
+  <!-- Search bar for friends -->
+  <div class="relative mb-4">
+    <input type="text" id="friend-search" placeholder="Search friends..." class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  </div>
+  
+  <!-- Friend Request Form -->
+  <form action="{{ url_for('send_friend_request') }}" method="POST" class="flex flex-col gap-2 mb-4">
+    <input type="email" name="email" placeholder="Add Friend by Email" class="border rounded px-3 py-2 text-sm" required />
+    <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700">Send Request</button>
+  </form>
+  
+  <!-- Pending Friend Requests -->
+  <h3 class="text-sm font-semibold text-gray-700 mb-2">Pending Requests</h3>
+  <div class="max-h-40 overflow-y-auto mb-4 pr-1">
+    <ul class="text-sm space-y-2" id="pending-requests-list">
+      {% for request in current_user.received_requests %}
+        {% if request.status == 'pending' %}
+          <li class="flex items-center justify-between p-2 bg-indigo-50 rounded friend-item" data-name="{{ request.sender.name|lower }}">
+            <span>👤 {{ request.sender.name }}</span>
+            <div class="flex gap-2">
+              <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                <input type="hidden" name="action" value="accept">
+                <button type="submit" class="bg-green-500 text-white text-xs rounded px-2 py-1 hover:bg-green-600">Accept</button>
+              </form>
+              <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                <input type="hidden" name="action" value="reject">
+                <button type="submit" class="bg-red-500 text-white text-xs rounded px-2 py-1 hover:bg-red-600">Reject</button>
+              </form>
+            </div>
+          </li>
+        {% endif %}
+      {% endfor %}
+      {% if not current_user.received_requests.filter_by(status='pending').all() %}
+        <li class="text-gray-400" id="no-pending-requests">No pending requests</li>
+      {% endif %}
+    </ul>
+  </div>
+  
+  <!-- Friends List -->
+  <h3 class="text-sm font-semibold text-gray-700 mb-2">Your Friends</h3>
+  <div class="max-h-60 overflow-y-auto pr-1">
+    <ul class="text-sm space-y-2" id="friends-list">
+      {% for friend in current_user.friends %}
+        <li class="p-2 hover:bg-gray-50 rounded flex items-center justify-between friend-item" data-name="{{ friend.name|lower }}">
+          <div class="flex items-center">
+            <i data-lucide="user" class="w-4 h-4 text-indigo-500 mr-2"></i>
+            <span>{{ friend.name }}</span>
+          </div>
+          <span class="text-xs text-gray-500">{{ friend.email }}</span>
+        </li>
+      {% endfor %}
+      {% if not current_user.friends.all() %}
+        <li class="text-gray-400" id="no-friends">No friends yet</li>
+      {% endif %}
+    </ul>
+  </div>
+</section>
