@@ -5,6 +5,7 @@
   <!-- Filters -->
   <div class="flex flex-wrap gap-4 mb-4 flex-shrink-0">
     <input type="text" id="job-search" placeholder="Search Job Title" class="border rounded px-3 py-2 text-sm flex-1" onkeyup="filterApplications()" />
+    
     <select id="job-type-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
       <option value="">Filter by Job Type</option>
       <option value="Internship">Internship</option>
@@ -12,11 +13,24 @@
       <option value="Scholarship">Scholarship</option>
       <option value="Clerkship">Clerkship</option>
     </select>
-    <select id="date-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
-      <option value="">Sort by Date</option>
-      <option value="newest">Newest First</option>
-      <option value="oldest">Oldest First</option>
+    
+    <select id="friend-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
+      <option value="">Filter by Friend</option>
+      {% set unique_friends = [] %}
+      {% for app in shared_apps %}
+        {% if app.user.name not in unique_friends %}
+          {% set temp = unique_friends.append(app.user.name) %}
+          <option value="{{ app.user.name|lower }}">{{ app.user.name }}</option>
+        {% endif %}
+      {% endfor %}
     </select>
+    
+    <button id="reset-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-4 py-2 rounded flex items-center" onclick="resetFilters()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      Reset Filters
+    </button>
   </div>
 
   <!-- Tabs -->
@@ -46,7 +60,8 @@
               id="shared-app-{{ app.id }}"
               data-title="{{ app.title|lower }}" 
               data-date="{{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else '' }}"
-              data-job-type="{{ app.job_type|lower if app.job_type else '' }}">
+              data-job-type="{{ app.job_type|lower if app.job_type else '' }}"
+              data-friend="{{ app.user.name|lower }}">
             <div>
               <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
               <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
@@ -80,7 +95,8 @@
           <li class="app-item border p-4 rounded hover:bg-gray-50"
               data-title="{{ app.title|lower }}" 
               data-date="{{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else '' }}"
-              data-job-type="{{ app.job_type|lower if app.job_type else '' }}">
+              data-job-type="{{ app.job_type|lower if app.job_type else '' }}"
+              data-friend="{{ app.user.name|lower }}">
             <div>
               <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
               <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>

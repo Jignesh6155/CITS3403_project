@@ -108,12 +108,12 @@ function switchTab(tabName) {
 }
 
 /**
- * Filter applications based on search, job type, and date sorting
+ * Filter applications based on search, job type, and friend
  */
 function filterApplications() {
   const searchTerm = document.getElementById('job-search').value.toLowerCase();
   const jobTypeFilter = document.getElementById('job-type-filter').value.toLowerCase();
-  const dateFilter = document.getElementById('date-filter').value;
+  const friendFilter = document.getElementById('friend-filter').value.toLowerCase();
   
   // Determine which tab is active
   const activeTabId = document.querySelector('.tab-btn.border-indigo-500').id.replace('-tab', '');
@@ -123,37 +123,25 @@ function filterApplications() {
   // If no applications, exit early
   if (applications.length === 0) return;
   
-  // First, filter by search term and job type
+  // Filter by search term, job type, and friend
   let filteredApps = applications.filter(app => {
     const jobTitle = app.getAttribute('data-title') || '';
     const jobType = app.getAttribute('data-job-type') || '';
+    const friend = app.getAttribute('data-friend') || '';
     
     const matchesSearch = !searchTerm || jobTitle.includes(searchTerm);
-    const matchesJobType = !jobTypeFilter || jobType.includes(jobTypeFilter.toLowerCase());
+    const matchesJobType = !jobTypeFilter || jobType.includes(jobTypeFilter);
+    const matchesFriend = !friendFilter || friend === friendFilter;
     
-    return matchesSearch && matchesJobType;
+    return matchesSearch && matchesJobType && matchesFriend;
   });
-  
-  // Then sort by date if a sort option is selected
-  if (dateFilter) {
-    filteredApps.sort((a, b) => {
-      const dateA = a.getAttribute('data-date') || '';
-      const dateB = b.getAttribute('data-date') || '';
-      
-      if (dateFilter === 'newest') {
-        return dateB.localeCompare(dateA); // Newest first (descending)
-      } else {
-        return dateA.localeCompare(dateB); // Oldest first (ascending)
-      }
-    });
-  }
   
   // Hide all applications first
   applications.forEach(app => {
     app.classList.add('hidden');
   });
   
-  // Show filtered and sorted applications
+  // Show filtered applications
   filteredApps.forEach(app => {
     app.classList.remove('hidden');
   });
@@ -167,6 +155,35 @@ function filterApplications() {
     } else {
       emptyMessage.classList.add('hidden');
     }
+  }
+}
+
+/**
+ * Reset all filters and show all applications
+ */
+function resetFilters() {
+  // Reset the search input
+  const searchInput = document.getElementById('job-search');
+  if (searchInput) searchInput.value = '';
+  
+  // Reset the job type dropdown
+  const jobTypeFilter = document.getElementById('job-type-filter');
+  if (jobTypeFilter) jobTypeFilter.selectedIndex = 0;
+  
+  // Reset the friend filter dropdown
+  const friendFilter = document.getElementById('friend-filter');
+  if (friendFilter) friendFilter.selectedIndex = 0;
+  
+  // Apply the reset filters
+  filterApplications();
+  
+  // Visual feedback - briefly highlight the button
+  const resetBtn = document.getElementById('reset-filters-btn');
+  if (resetBtn) {
+    resetBtn.classList.add('bg-indigo-100');
+    setTimeout(() => {
+      resetBtn.classList.remove('bg-indigo-100');
+    }, 300);
   }
 }
 
