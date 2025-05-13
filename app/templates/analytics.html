@@ -3,12 +3,25 @@
 {% block title %}Career Analytics Arena{% endblock %}
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Career Analytics Arena</h1>
+  <div class="flex items-center gap-2">
+    <h1 class="text-xl font-semibold text-indigo-900">Career Analytics Arena</h1>
+    <!-- Help Icon with Tooltip -->
+    <div class="relative group">
+      <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
+      <div class="absolute top-7 left-0 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
+        <strong class="block mb-1 text-indigo-700">How to Read Analytics</strong>
+        Track your application stats, weekly activity, and success trends.<br><br>
+        Use this data to optimize where and how you're applying.<br><br>
+        Hover over charts for details. 🎯 Aim to improve your success rate each week!
+      </div>
+    </div>
+  </div>
   <div class="flex gap-4 items-center">
     <i data-lucide="bar-chart-3" class="w-5 h-5 text-gray-500"></i>
     <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
   </div>
 </header>
+
 
 <main class="flex-1 p-6 space-y-6 overflow-y-auto">
   <!-- KPI SUMMARY -->

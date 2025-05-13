@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CareerLink — Sign In / Sign Up</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script defer>
-    // Global flag to toggle dummy users feature
-    const SHOW_DUMMY_USERS = true; // true for testing, false for production
-
-    // Dummy user data
+    const SHOW_DUMMY_USERS = true;
     const dummyUsers = [
       { name: 'Adriaan', email: 'Adriaan@example.com', password: 'password123' },
       { name: 'Jignesh', email: 'Jignesh@example.com', password: 'password123' },
@@ -40,8 +37,12 @@
       signupForm.querySelector('input[name="password"]').value = password;
     }
 
-    // Initialize dummy users dropdown when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
+    function toggleInfoModal() {
+      const modal = document.getElementById('info-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
       if (!SHOW_DUMMY_USERS) {
         document.querySelectorAll('.dummy-users-section').forEach(el => el.style.display = 'none');
       }
@@ -53,32 +54,34 @@
 
   <div class="relative w-[800px] h-[500px] bg-white shadow-sm flex overflow-hidden">
 
-    <!-- Left panel (Sign in prompt) -->
-    <div id="left-panel"
-         class="w-1/2 bg-indigo-100 text-indigo-900 flex flex-col items-center justify-center p-10">
+    <!-- Left panel (Sign In Prompt) -->
+    <div id="left-panel" class="w-1/2 bg-indigo-100 text-indigo-900 flex flex-col items-center justify-center p-10">
       <h2 class="text-3xl font-semibold mb-4">Welcome Back!</h2>
       <p class="mb-6 text-gray-700">Sign in with your email & password</p>
       <button onclick="showLogin()"
-              class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-none hover:bg-indigo-600 hover:text-white transition">
+        class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-none hover:bg-indigo-600 hover:text-white transition">
         SIGN IN
+      </button>
+      <!-- About Button -->
+      <button onclick="toggleInfoModal()"
+        class="mt-4 px-4 py-2 border-2 border-indigo-400 text-indigo-400 rounded-none hover:bg-indigo-400 hover:text-white transition">
+        About CareerLink
       </button>
     </div>
 
     <!-- Right panel (Sign Up Form) -->
-    <div id="right-panel"
-         class="w-1/2 flex flex-col justify-center items-center p-10">
+    <div id="right-panel" class="w-1/2 flex flex-col justify-center items-center p-10">
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Create Account</h2>
-      
+
       {% if error %}
       <div class="w-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
         <span class="block sm:inline">{{ error }}</span>
       </div>
       {% endif %}
 
-      <!-- Dummy users dropdown for signup -->
       <div class="dummy-users-section w-full mb-4">
-        <select onchange="const selectedUser = dummyUsers[this.value]; if(selectedUser) fillSignupForm(selectedUser.name, selectedUser.email, selectedUser.password);" 
-                class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
+        <select onchange="const selectedUser = dummyUsers[this.value]; if(selectedUser) fillSignupForm(selectedUser.name, selectedUser.email, selectedUser.password);"
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
           <option value="">-- Test User --</option>
           <option value="0">Adriaan</option>
           <option value="1">Jignesh</option>
@@ -87,25 +90,28 @@
       </div>
 
       <form action="{{ url_for('signup') }}" method="POST" class="w-full flex flex-col gap-4">
-        <input type="text" name="name" placeholder="Name" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="email" name="email" placeholder="Email address" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
+        <input type="text" name="name" placeholder="Name" required
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="email" name="email" placeholder="Email address" required
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="password" name="password" placeholder="Password" required
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <button type="submit"
+          class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
           SIGN UP
         </button>
       </form>
     </div>
 
-    <!-- Sliding login form (Sign In Form) -->
+    <!-- Sliding Login Form -->
     <div id="login-form"
-         class="absolute top-0 left-1/2 w-1/2 h-full bg-white p-10 flex flex-col justify-center items-center transform transition-all duration-500 translate-x-full">
-      
+      class="absolute top-0 left-1/2 w-1/2 h-full bg-white p-10 flex flex-col justify-center items-center transform transition-all duration-500 translate-x-full">
+
       <h2 class="text-3xl font-semibold mb-6 text-indigo-900">Sign In</h2>
-      
-      <!-- Dummy users dropdown for login -->
+
       <div class="dummy-users-section w-full mb-4">
-        <select onchange="const loginUser = dummyUsers[this.value]; if(loginUser) fillLoginForm(loginUser.email, loginUser.password);" 
-                class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
+        <select onchange="const loginUser = dummyUsers[this.value]; if(loginUser) fillLoginForm(loginUser.email, loginUser.password);"
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-gray-600">
           <option value="">-- Test User --</option>
           <option value="0">Adriaan</option>
           <option value="1">Jignesh</option>
@@ -114,9 +120,12 @@
       </div>
 
       <form action="{{ url_for('signin') }}" method="POST" class="w-full flex flex-col gap-4">
-        <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
+        <input type="email" name="email" placeholder="Email" required
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input type="password" name="password" placeholder="Password" required
+          class="w-full px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <button type="submit"
+          class="w-full bg-indigo-600 text-white py-2 rounded-none hover:bg-indigo-700 transition">
           LOGIN
         </button>
       </form>
@@ -124,7 +133,22 @@
       <button onclick="hideLogin()" class="mt-4 text-sm text-indigo-600 hover:underline">
         ← Back to Sign Up
       </button>
+    </div>
 
+    <!-- Info Modal -->
+    <div id="info-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+      <div class="bg-white p-8 rounded-lg shadow-lg max-w-lg text-center">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">About CareerLink</h2>
+        <p class="text-gray-600 mb-6">
+          CareerLink is your all-in-one platform to manage job applications, analyze career progress, and connect with like-minded professionals. 
+          Track your applications, get insightful analytics, and grow your professional network all in one place.
+        </p>
+        <button onclick="toggleInfoModal()"
+          class="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">
+          Close
+        </button>
+      </div>
     </div>
 
   </div>

@@ -5,7 +5,19 @@
 
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
-  <h1 class="text-xl font-semibold text-indigo-900">Friends</h1>
+  <h1 class="text-xl font-semibold text-indigo-900 flex items-center gap-2">
+    Friends
+    <!-- Help Icon with Tooltip -->
+    <div class="relative group">
+      <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
+      <div class="absolute top-7 left-0 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
+        <strong class="block mb-1 text-indigo-700">Managing Friends</strong>
+        Send and receive friend requests to share job opportunities.<br><br>
+        Track pending requests and manage your connections easily.<br><br>
+        Stay connected and boost each other's success! 🤝
+      </div>
+    </div>
+  </h1>
 </header>
 
 <!-- Flash Messages -->
