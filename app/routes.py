@@ -461,6 +461,45 @@ def analytics():
         cum_labels  = cum_labels,
         cum_counts  = cum_counts,
     )
+
+
+@app.route('/toggle-favorite/<int:friend_id>', methods=['POST'])
+def toggle_favorite(friend_id):
+    print(f"Toggle favorite request received for friend_id: {friend_id}")
+    
+    if 'name' not in session:
+        print("Error: Not logged in")
+        return jsonify({"error": "Not logged in"}), 401
+        
+    current_user = User.query.filter_by(name=session['name']).first()
+    if not current_user:
+        print("Error: User not found")
+        return jsonify({"error": "User not found"}), 404
+        
+    friend = User.query.get(friend_id)
+    if not friend:
+        print(f"Error: Friend with ID {friend_id} not found")
+        return jsonify({"error": "Friend not found"}), 404
+        
+    # Check if this is actually a friend
+    if friend not in current_user.friends:
+        print(f"Error: User {current_user.id} is not friends with {friend_id}")
+        return jsonify({"error": "Not friends with this user"}), 403
+    
+    try:
+        # For this implementation, we'll use localStorage on the client side 
+        # to track favorites, so we don't need to modify the database.
+        print(f"Toggle favorite successful for friend_id: {friend_id}")
+        
+        return jsonify({
+            "success": True, 
+            "is_favorite": True
+        })
+        
+    except Exception as e:
+        print(f"Error in toggle_favorite: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+# Update the existing comms route to pass necessary data for filtering
 @app.route("/comms")
 def comms():
     if 'name' not in session:
@@ -477,7 +516,6 @@ def comms():
     # Get app statuses using raw SQL with proper text() wrapper
     app_statuses = {}
     for app in shared_apps:
-        # Use text() and parameter binding for safety
         result = db.session.execute(
             text("SELECT status FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
             {"user_id": user.id, "app_id": app.id}
@@ -495,6 +533,25 @@ def comms():
     # Get the current user's friends
     user_friends = user.friends.all()
     
+    # Get friend request records for "recent" sorting
+    friend_requests = {}
+    for friend in user_friends:
+        request = FriendRequest.query.filter(
+            ((FriendRequest.sender_id == user.id) & (FriendRequest.receiver_id == friend.id)) |
+            ((FriendRequest.sender_id == friend.id) & (FriendRequest.receiver_id == user.id))
+        ).order_by(FriendRequest.updated_at.desc()).first()
+        
+        if request:
+            friend_requests[friend.id] = request
+    
+    # Count shared apps per friend
+    shared_apps_count = {}
+    for friend in user_friends:
+        count = JobApplication.query.filter_by(user_id=friend.id) \
+            .filter(JobApplication.shared_with.any(id=user.id)) \
+            .count()
+        shared_apps_count[friend.id] = count
+    
     return render_template(
         "comms.html",
         active_page="comms",
@@ -502,7 +559,9 @@ def comms():
         current_user=user,
         shared_apps=shared_apps,
         app_statuses=app_statuses,
-        pending_requests=pending_requests
+        pending_requests=pending_requests,
+        friend_requests=friend_requests,  # Pass friend requests for sorting by recent
+        shared_apps_count=shared_apps_count  # Pass shared apps count for sorting
     )
 @app.route("/upload", methods=["POST"])
 def upload():
