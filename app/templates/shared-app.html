@@ -1,0 +1,122 @@
+<!-- Shared Applications Component -->
+<section class="bg-white border border-gray-200 p-6 shadow rounded-lg col-span-1 flex flex-col h-full min-h-0">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Shared Applications</h2>
+
+  <!-- Filters -->
+  <div class="flex flex-wrap gap-4 mb-4 flex-shrink-0">
+    <input type="text" id="job-search" placeholder="Search Job Title" class="border rounded px-3 py-2 text-sm flex-1" onkeyup="filterApplications()" />
+    
+    <select id="job-type-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
+      <option value="">Filter by Job Type</option>
+      <option value="Internship">Internship</option>
+      <option value="Graduate-Job">Graduate Job</option>
+      <option value="Scholarship">Scholarship</option>
+      <option value="Clerkship">Clerkship</option>
+    </select>
+    
+    <select id="friend-filter" class="border rounded px-3 py-2 text-sm" onchange="filterApplications()">
+      <option value="">Filter by Friend</option>
+      {% set unique_friends = [] %}
+      {% for app in shared_apps %}
+        {% if app.user.name not in unique_friends %}
+          {% set temp = unique_friends.append(app.user.name) %}
+          <option value="{{ app.user.name|lower }}">{{ app.user.name }}</option>
+        {% endif %}
+      {% endfor %}
+    </select>
+    
+    <button id="reset-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-4 py-2 rounded flex items-center" onclick="resetFilters()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      Reset Filters
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-gray-200 mb-4 flex-shrink-0">
+    <button id="active-tab" class="tab-btn px-4 py-2 border-b-2 border-indigo-500 text-indigo-600 font-medium" onclick="switchTab('active')">Active</button>
+    <button id="archived-tab" class="tab-btn px-4 py-2 text-gray-600 hover:text-gray-800" onclick="switchTab('archived')">Archived</button>
+  </div>
+
+  <!-- Shared Apps List Container -->
+  <div class="overflow-y-auto flex-1 min-h-0 border border-gray-200 rounded mb-4">
+    <!-- Active Applications List -->
+    <ul class="space-y-3 p-4 tab-content h-full" id="active-applications">
+      {% set active_apps = [] %}
+      {% set archived_apps = [] %}
+
+      {% for app in shared_apps %}
+        {% if app_statuses[app.id] == 'active' %}
+          {% set temp = active_apps.append(app) %}
+        {% else %}
+          {% set temp = archived_apps.append(app) %}
+        {% endif %}
+      {% endfor %}
+      
+      {% if active_apps %}
+        {% for app in active_apps %}
+          <li class="app-item border p-4 rounded hover:bg-gray-50 flex justify-between items-center" 
+              id="shared-app-{{ app.id }}"
+              data-title="{{ app.title|lower }}" 
+              data-date="{{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else '' }}"
+              data-job-type="{{ app.job_type|lower if app.job_type else '' }}"
+              data-friend="{{ app.user.name|lower }}">
+            <div>
+              <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
+              <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+              {% if app.location or app.job_type %}
+                <p class="text-gray-500 text-xs mt-1">
+                  {% if app.location %}📍 {{ app.location }}{% endif %}
+                  {% if app.location and app.job_type %} • {% endif %}
+                  {% if app.job_type %}💼 {{ app.job_type }}{% endif %}
+                </p>
+              {% endif %}
+              {% if app.closing_date %}
+                <p class="text-red-600 text-xs mt-1">Closes: {{ app.closing_date.strftime('%d %b %Y') }}</p>
+              {% endif %}
+            </div>
+            <button onclick="saveApplication('{{ app.id }}')" 
+                    class="save-app-btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1 rounded transition-colors duration-200"
+                    id="save-btn-{{ app.id }}">
+              Save to Tracker
+            </button>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="empty-message text-gray-400 text-center py-4">No active shared applications.</li>
+      {% endif %}
+    </ul>
+    
+    <!-- Archived Applications List -->
+    <ul class="space-y-3 p-4 tab-content hidden h-full" id="archived-applications">
+      {% if archived_apps %}
+        {% for app in archived_apps %}
+          <li class="app-item border p-4 rounded hover:bg-gray-50"
+              data-title="{{ app.title|lower }}" 
+              data-date="{{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else '' }}"
+              data-job-type="{{ app.job_type|lower if app.job_type else '' }}"
+              data-friend="{{ app.user.name|lower }}">
+            <div>
+              <p class="font-semibold">{{ app.company }} - {{ app.title }}</p>
+              <p class="text-gray-500 text-sm">Shared by {{ app.user.name }} | {{ app.date_applied.strftime('%Y-%m-%d') if app.date_applied else 'Date not specified' }}</p>
+              {% if app.location or app.job_type %}
+                <p class="text-gray-500 text-xs mt-1">
+                  {% if app.location %}📍 {{ app.location }}{% endif %}
+                  {% if app.location and app.job_type %} • {% endif %}
+                  {% if app.job_type %}💼 {{ app.job_type }}{% endif %}
+                </p>
+              {% endif %}
+              {% if app.closing_date %}
+                <p class="text-red-600 text-xs mt-1">Closes: {{ app.closing_date.strftime('%d %b %Y') }}</p>
+              {% endif %}
+              <span class="inline-block mt-2 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">Saved to your tracker</span>
+            </div>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="empty-message text-gray-400 text-center py-4">No archived applications.</li>
+      {% endif %}
+    </ul>
+  </div>
+</section>

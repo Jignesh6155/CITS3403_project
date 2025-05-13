@@ -1,0 +1,121 @@
+<!-- Friends List Component -->
+<section class="bg-white border border-gray-200 p-4 shadow rounded-lg col-span-1 flex flex-col h-full min-h-0">
+  <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+    <i data-lucide="users" class="w-5 h-5 text-indigo-500"></i>
+    Friends
+  </h2>
+  
+  <!-- Search Bar -->
+  <div class="relative mb-3">
+    <input type="text" id="friend-search" placeholder="Search friends..." class="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  </div>
+  
+  <!-- Friend Request Form -->
+  <form action="{{ url_for('send_friend_request') }}" method="POST" class="flex flex-col gap-2 mb-4 bg-gray-50 p-3 rounded-lg">
+    <input type="email" name="email" placeholder="Add Friend by Email" class="border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200" required />
+    <button type="submit" class="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors duration-200 flex items-center justify-center gap-2">
+      <i data-lucide="user-plus" class="w-4 h-4"></i>
+      Send Request
+    </button>
+  </form>
+  
+  <!-- Pending Friend Requests -->
+  <div class="mb-4">
+    <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+      <i data-lucide="clock" class="w-4 h-4 text-indigo-500"></i>
+      Pending Requests
+    </h3>
+    <div class="max-h-32 overflow-y-auto mb-3 pr-1">
+      <ul class="text-sm space-y-2" id="pending-requests-list">
+        {% for request in current_user.received_requests %}
+          {% if request.status == 'pending' %}
+            <li class="flex items-center justify-between p-2 bg-indigo-50 rounded-lg friend-item hover:bg-indigo-100 transition-colors duration-200" data-name="{{ request.sender.name|lower }}">
+              <div class="flex items-center gap-2">
+                <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
+                <span>{{ request.sender.name }}</span>
+              </div>
+              <div class="flex gap-2">
+                <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                  <input type="hidden" name="action" value="accept">
+                  <button type="submit" class="bg-green-500 text-white text-xs rounded-lg px-2 py-1 hover:bg-green-600 transition-colors duration-200 flex items-center gap-1">
+                    <i data-lucide="check" class="w-3 h-3"></i>
+                    Accept
+                  </button>
+                </form>
+                <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                  <input type="hidden" name="action" value="reject">
+                  <button type="submit" class="bg-red-500 text-white text-xs rounded-lg px-2 py-1 hover:bg-red-600 transition-colors duration-200 flex items-center gap-1">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                    Reject
+                  </button>
+                </form>
+              </div>
+            </li>
+          {% endif %}
+        {% endfor %}
+        {% if not current_user.received_requests.filter_by(status='pending').all() %}
+          <li class="text-gray-400 text-center py-2" id="no-pending-requests">No pending requests</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Friends List -->
+  <div class="flex-1 flex flex-col min-h-0">
+    <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+      <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
+      Your Friends
+    </h3>
+    
+    <!-- Friends List Container with Alphabetical Index -->
+    <div class="flex flex-1 min-h-0">
+      <!-- Alphabetical Index -->
+      <div class="flex flex-col gap-0.5 mr-2 py-1 overflow-y-auto" id="alphabet-index" style="max-height: calc(100vh - 400px);">
+        <button class="text-xs px-1 py-0.5 rounded hover:bg-indigo-100 active-letter transition-colors duration-200" data-letter="all">#</button>
+        {% for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' %}
+          <button class="text-xs px-1 py-0.5 rounded hover:bg-indigo-100 transition-colors duration-200" data-letter="{{ letter }}">{{ letter }}</button>
+        {% endfor %}
+      </div>
+      
+      <!-- Friends List with Virtual Scroll -->
+      <div class="overflow-y-auto flex-1 min-h-0 pr-1" id="friends-list-container">
+        <ul class="text-sm space-y-1" id="friends-list">
+          {% for friend in current_user.friends %}
+            <li class="p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between friend-item transition-colors duration-200" 
+                data-name="{{ friend.name|lower }}"
+                data-first-letter="{{ friend.name[0]|upper }}">
+              <div class="flex items-center gap-2">
+                <i data-lucide="user" class="w-4 h-4 text-indigo-500"></i>
+                <span>{{ friend.name }}</span>
+              </div>
+              <span class="text-xs text-gray-500">{{ friend.email }}</span>
+            </li>
+          {% endfor %}
+          {% if not current_user.friends.all() %}
+            <li class="text-gray-400 text-center py-6" id="no-friends">
+              <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 text-gray-300"></i>
+              <p>No friends yet</p>
+              <p class="text-sm mt-1">Add friends to share job opportunities!</p>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Pagination -->
+    <div class="flex justify-between items-center mt-3 pt-2 border-t" id="pagination-container">
+      <button id="prev-page" class="text-sm text-gray-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        Previous
+      </button>
+      <span id="page-info" class="text-sm text-gray-600">Page 1 of 1</span>
+      <button id="next-page" class="text-sm text-gray-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1">
+        Next
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+</section>
