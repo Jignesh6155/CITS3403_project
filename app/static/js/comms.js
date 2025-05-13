@@ -4,75 +4,224 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Friend search functionality
+  // Initialize all components
   initFriendSearch();
-  
-  // Tab switching for shared applications
+  initAlphabeticalIndex();
+  initPagination();
+  initFavoriteButtons();
   initTabSwitching();
-  
-  // Share modal functionality
   initShareModal();
 });
+
+// Constants for pagination
+const ITEMS_PER_PAGE = 10;
+let currentPage = 1;
+let filteredFriends = [];
 
 /**
  * Initialize the friend search functionality
  */
 function initFriendSearch() {
-  const friendSearchInput = document.getElementById('friend-search');
-  if (!friendSearchInput) return;
+  const searchInput = document.getElementById('friend-search');
+  if (!searchInput) return;
   
-  friendSearchInput.addEventListener('input', function() {
-    const searchTerm = this.value.trim().toLowerCase();
-    const friendItems = document.querySelectorAll('#friends-list .friend-item');
-    const pendingItems = document.querySelectorAll('#pending-requests-list .friend-item');
-    
-    let friendsFound = false;
-    let pendingFound = false;
-    
-    // Filter friends list
-    friendItems.forEach(item => {
-      const name = item.getAttribute('data-name');
-      if (name.includes(searchTerm)) {
-        item.style.display = '';
-        friendsFound = true;
-      } else {
-        item.style.display = 'none';
-      }
+  searchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    filterFriends(searchTerm);
+  });
+}
+
+/**
+ * Initialize alphabetical index functionality
+ */
+function initAlphabeticalIndex() {
+  const letterButtons = document.querySelectorAll('#alphabet-index button');
+  if (!letterButtons.length) return;
+  
+  letterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const letter = button.getAttribute('data-letter');
+      filterFriendsByLetter(letter);
     });
-    
-    // Filter pending requests
-    pendingItems.forEach(item => {
-      const name = item.getAttribute('data-name');
-      if (name.includes(searchTerm)) {
-        item.style.display = '';
-        pendingFound = true;
-      } else {
-        item.style.display = 'none';
-      }
-    });
-    
-    // Toggle "no results" messages
-    const noFriendsMsg = document.getElementById('no-friends');
-    const noPendingMsg = document.getElementById('no-pending-requests');
-    
-    if (noFriendsMsg) {
-      noFriendsMsg.style.display = friendsFound ? 'none' : '';
-      if (!friendsFound && searchTerm) {
-        noFriendsMsg.textContent = 'No friends match your search';
-      } else {
-        noFriendsMsg.textContent = 'No friends yet';
-      }
-    }
-    
-    if (noPendingMsg) {
-      noPendingMsg.style.display = pendingFound ? 'none' : '';
-      if (!pendingFound && searchTerm) {
-        noPendingMsg.textContent = 'No pending requests match your search';
-      } else {
-        noPendingMsg.textContent = 'No pending requests';
-      }
+  });
+}
+
+/**
+ * Filter friends based on search term
+ */
+function filterFriends(searchTerm) {
+  const friendItems = document.querySelectorAll('#friends-list .friend-item');
+  filteredFriends = Array.from(friendItems).filter(item => {
+    const name = item.getAttribute('data-name');
+    return name.includes(searchTerm);
+  });
+  
+  currentPage = 1;
+  updatePagination();
+}
+
+/**
+ * Filter friends by letter
+ */
+function filterFriendsByLetter(letter) {
+  const friendItems = document.querySelectorAll('#friends-list .friend-item');
+  filteredFriends = Array.from(friendItems).filter(item => {
+    if (letter === 'all') return true;
+    const firstLetter = item.getAttribute('data-first-letter');
+    return firstLetter === letter;
+  });
+  
+  currentPage = 1;
+  updatePagination();
+  
+  // Update active state of letter buttons
+  document.querySelectorAll('#alphabet-index button').forEach(btn => {
+    btn.classList.remove('bg-indigo-100', 'text-indigo-700');
+    if (btn.getAttribute('data-letter') === letter) {
+      btn.classList.add('bg-indigo-100', 'text-indigo-700');
     }
   });
+}
+
+/**
+ * Initialize pagination functionality
+ */
+function initPagination() {
+  const prevButton = document.getElementById('prev-page');
+  const nextButton = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
+  const friendsList = document.getElementById('friends-list');
+  const paginationContainer = document.getElementById('pagination-container');
+  
+  if (!prevButton || !nextButton || !pageInfo || !friendsList || !paginationContainer) return;
+  
+  prevButton.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      updatePagination();
+    }
+  });
+  
+  nextButton.addEventListener('click', () => {
+    const maxPages = Math.ceil(filteredFriends.length / ITEMS_PER_PAGE);
+    if (currentPage < maxPages) {
+      currentPage++;
+      updatePagination();
+    }
+  });
+  
+  // Initialize with all friends
+  filteredFriends = Array.from(document.querySelectorAll('#friends-list .friend-item'));
+  updatePagination();
+}
+
+/**
+ * Initialize favorite buttons functionality
+ */
+function initFavoriteButtons() {
+  document.querySelectorAll('.favorite-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const friendItem = this.closest('.friend-item');
+      const isFavorite = friendItem.getAttribute('data-category') === 'favorites';
+      
+      if (isFavorite) {
+        friendItem.setAttribute('data-category', 'all');
+        this.querySelector('i').classList.remove('text-yellow-500');
+      } else {
+        friendItem.setAttribute('data-category', 'favorites');
+        this.querySelector('i').classList.add('text-yellow-500');
+      }
+      
+      // Update category filter if it's active
+      const categorySelect = document.getElementById('friend-category');
+      if (categorySelect.value === 'favorites') {
+        filterFriendsByCategory('favorites');
+      }
+    });
+  });
+}
+
+/**
+ * Filter friends by category
+ */
+function filterFriendsByCategory(category) {
+  const friendItems = document.querySelectorAll('#friends-list .friend-item');
+  filteredFriends = Array.from(friendItems).filter(item => {
+    if (category === 'all') return true;
+    const itemCategory = item.getAttribute('data-category');
+    return itemCategory === category;
+  });
+  
+  currentPage = 1;
+  updatePagination();
+}
+
+/**
+ * Update pagination UI and display
+ */
+function updatePagination() {
+  const prevButton = document.getElementById('prev-page');
+  const nextButton = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
+  const friendsList = document.getElementById('friends-list');
+  const paginationContainer = document.getElementById('pagination-container');
+  
+  if (!prevButton || !nextButton || !pageInfo || !friendsList || !paginationContainer) return;
+  
+  const maxPages = Math.ceil(filteredFriends.length / ITEMS_PER_PAGE);
+  
+  // Hide pagination if no results
+  if (filteredFriends.length === 0) {
+    paginationContainer.style.display = 'none';
+    pageInfo.textContent = '';
+    
+    // Hide all friend items
+    document.querySelectorAll('#friends-list .friend-item').forEach(item => {
+      item.style.display = 'none';
+    });
+    
+    // Show no results message
+    const noFriendsMsg = document.getElementById('no-friends');
+    if (noFriendsMsg) {
+      noFriendsMsg.innerHTML = `
+        <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 text-gray-300"></i>
+        <p>No friends found</p>
+        <p class="text-sm mt-1">Try a different letter or search</p>
+      `;
+      noFriendsMsg.style.display = '';
+      // Reinitialize Lucide icons
+      lucide.createIcons();
+    }
+    return;
+  }
+  
+  // Show pagination if there are results
+  paginationContainer.style.display = 'flex';
+  
+  const start = (currentPage - 1) * ITEMS_PER_PAGE;
+  const end = start + ITEMS_PER_PAGE;
+  
+  // Update pagination controls
+  prevButton.disabled = currentPage === 1;
+  nextButton.disabled = currentPage === maxPages;
+  pageInfo.textContent = `Page ${currentPage} of ${maxPages}`;
+  
+  // Hide all friends first
+  document.querySelectorAll('#friends-list .friend-item').forEach(item => {
+    item.style.display = 'none';
+  });
+  
+  // Show current page items
+  filteredFriends.slice(start, end).forEach(item => {
+    item.style.display = '';
+  });
+  
+  // Hide no results message if we have results
+  const noFriendsMsg = document.getElementById('no-friends');
+  if (noFriendsMsg) {
+    noFriendsMsg.style.display = 'none';
+  }
 }
 
 /**
