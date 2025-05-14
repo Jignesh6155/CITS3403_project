@@ -1,21 +1,14 @@
 import unittest
-from app import create_app
 from app.models import db, User, JobApplication
-from app.config import TestingConfig
+from tests.base import FlaskTestBase
 from datetime import datetime
 
-class TestModels(unittest.TestCase):
-    def setUp(self):
-        self.app = create_app(TestingConfig)
-        self.app_context = self.app.app_context()
-        self.app_context.push()
-        db.create_all()
-
-    def tearDown(self):
-        db.session.remove()
-        db.drop_all()
-        self.app_context.pop()
-
+class TestModels(FlaskTestBase):
+    """
+    Tests for User and JobApplication models using a mock in-memory database.
+    Inherits setup/teardown from FlaskTestBase for isolation.
+    To add more tests, just add methods to this class.
+    """
     def test_user_creation(self):
         user = User(name='modeluser', email='model@example.com', password='modelpass')
         db.session.add(user)

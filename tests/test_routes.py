@@ -1,25 +1,19 @@
 import unittest
-from app import create_app
 from app.models import db, User
-from app.config import TestingConfig
+from tests.base import FlaskTestBase
 
-class TestRoutes(unittest.TestCase):
+class TestRoutes(FlaskTestBase):
+    """
+    Tests for major Flask routes using a mock in-memory database.
+    Inherits setup/teardown from FlaskTestBase for isolation.
+    To add more tests, just add methods to this class.
+    """
     def setUp(self):
-        # Create app with testing config
-        self.app = create_app(TestingConfig)
-        self.client = self.app.test_client()
-        self.app_context = self.app.app_context()
-        self.app_context.push()
-        db.create_all()
+        super().setUp()
         # Create a test user
         user = User(name='testuser', email='test@example.com', password='testpass')
         db.session.add(user)
         db.session.commit()
-
-    def tearDown(self):
-        db.session.remove()
-        db.drop_all()
-        self.app_context.pop()
 
     def test_home(self):
         response = self.client.get('/')

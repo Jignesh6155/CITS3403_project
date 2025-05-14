@@ -18,3 +18,22 @@ What was added:
         Comment: Extend to test more models and relationships as needed.
     tests/__init__.py
         Empty file to make tests a package (required for some runners/imports).
+    tests/base.py
+        Base class for Flask tests with mock DB setup/teardown using TestingConfig.
+        Inherit from this class for consistent DB isolation in all your tests.
+
+---
+
+Mock Database Setup for Testing:
+- All tests use an in-memory SQLite database for isolation and speed.
+- This is configured via TestingConfig in app/config.py.
+- The base class in tests/base.py handles setup/teardown for you.
+- To add more tests, simply inherit from FlaskTestBase in your test file:
+
+    from tests.base import FlaskTestBase
+    class MyTest(FlaskTestBase):
+        def test_something(self):
+            ...
+
+- If you want to use a different test database, edit TestingConfig in app/config.py.
+- All data is wiped between tests, so each test runs in a clean environment.
