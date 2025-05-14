@@ -1,4 +1,6 @@
 class Config:
+    # Set a strong, random SECRET_KEY for production. Do NOT use the default in production.
+    # Example: SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key')
     SECRET_KEY = 'flask-login-key' # can also remove this and put it in a .env file
     SQLALCHEMY_DATABASE_URI = 'sqlite:///careerlink.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False

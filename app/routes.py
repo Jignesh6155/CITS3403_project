@@ -535,6 +535,7 @@ def comms():
     # Get app statuses using raw SQL with proper text() wrapper
     app_statuses = {}
     for app in shared_apps:
+        # Parameterized query: safe from SQL injection
         result = db.session.execute(
             text("SELECT status FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
             {"user_id": user.id, "app_id": app.id}

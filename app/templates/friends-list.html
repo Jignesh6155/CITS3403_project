@@ -37,6 +37,7 @@
       <!-- Friend Request Form with enhanced styling -->
       <div>
         <form action="{{ url_for('main.send_friend_request') }}" method="POST" class="mb-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="flex flex-col gap-2">
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -80,6 +81,7 @@
                   </div>
                   <div class="flex gap-2">
                     <form action="{{ url_for('main.handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <input type="hidden" name="action" value="accept">
                       <button type="submit" class="bg-green-500 text-white text-xs rounded-full px-3 py-1 hover:bg-green-600 transition-colors flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,6 +91,7 @@
                       </button>
                     </form>
                     <form action="{{ url_for('main.handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <input type="hidden" name="action" value="reject">
                       <button type="submit" class="bg-red-500 text-white text-xs rounded-full px-3 py-1 hover:bg-red-600 transition-colors flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
