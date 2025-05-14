@@ -1,5 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
-from app import app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app.models import db, User, JobApplication, FriendRequest, Notification
 from app.models import ScrapedJob, application_shares
 from collections import Counter
@@ -55,7 +54,8 @@ HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
 SCRAPE_SIZE = 3
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-    with app.app_context():
+    from flask import current_app
+    with current_app.app_context():
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
         from app.models import db, ScrapedJob
         import json
@@ -216,10 +216,14 @@ def job_matches(job, search, location, job_type, category, confidence=0.35):
     )
     
     return basic_match and location_match and job_type_match and category_match
-@app.route("/")
+
+main_bp = Blueprint('main', __name__)
+
+@main_bp.route("/")
 def home():
     return render_template("index.html")
-@app.route("/signup", methods=["POST"])
+
+@main_bp.route("/signup", methods=["POST"])
 def signup():
     name = request.form.get("name")
     email = request.form.get("email")
@@ -234,7 +238,8 @@ def signup():
         session["name"] = name
         return redirect(url_for("dashboard"))
     return render_template("index.html", error="All fields are required.")
-@app.route("/signin", methods=["POST"])
+
+@main_bp.route("/signin", methods=["POST"])
 def signin():
     email = request.form.get("email")
     password = request.form.get("password")
@@ -246,7 +251,8 @@ def signin():
         else:
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
-@app.route("/dashboard")
+
+@main_bp.route("/dashboard")
 def dashboard():
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -354,13 +360,15 @@ def dashboard():
         success_rate=success_rate,
         leaderboard_preview=leaderboard,
         suggested_jobs=suggested_jobs,
-        user=user  # <-- This fixes the UndefinedError in dashboard.html
+        user=user
     )
-@app.route("/logout")
+
+@main_bp.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
-@app.route("/job-search")
+
+@main_bp.route("/job-search")
 def job_search():
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -377,7 +385,8 @@ def job_search():
     resume_keywords = session.pop('resume_keywords', [])
     suggested_jobs = session.pop('suggested_jobs', [])
     return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
-@app.route("/analytics")
+
+@main_bp.route("/analytics")
 def analytics():
     # --- auth guard -------------------------------------------------------
     if "name" not in session:
@@ -462,8 +471,7 @@ def analytics():
         cum_counts  = cum_counts,
     )
 
-
-@app.route('/toggle-favorite/<int:friend_id>', methods=['POST'])
+@main_bp.route('/toggle-favorite/<int:friend_id>', methods=['POST'])
 def toggle_favorite(friend_id):
     print(f"Toggle favorite request received for friend_id: {friend_id}")
     
@@ -499,8 +507,8 @@ def toggle_favorite(friend_id):
     except Exception as e:
         print(f"Error in toggle_favorite: {str(e)}")
         return jsonify({"error": str(e)}), 500
-# Update the existing comms route to pass necessary data for filtering
-@app.route("/comms")
+
+@main_bp.route("/comms")
 def comms():
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -563,7 +571,8 @@ def comms():
         friend_requests=friend_requests,  # Pass friend requests for sorting by recent
         shared_apps_count=shared_apps_count  # Pass shared apps count for sorting
     )
-@app.route("/upload", methods=["POST"])
+
+@main_bp.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
     if f and f.filename:
@@ -607,7 +616,8 @@ def upload():
     session['resume_keywords'] = []
     session['suggested_jobs'] = []
     return redirect(url_for('job_search'))
-@app.route("/api/scraped-jobs")
+
+@main_bp.route("/api/scraped-jobs")
 def api_scraped_jobs():
     try:
         # Get query params
@@ -665,7 +675,8 @@ def api_scraped_jobs():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-@app.route('/api/start-scraping', methods=['POST'])
+
+@main_bp.route('/api/start-scraping', methods=['POST'])
 def api_start_scraping():
     try:
         if 'name' not in session:
@@ -696,7 +707,8 @@ def api_start_scraping():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-@app.route('/api/scraping-stream')
+
+@main_bp.route('/api/scraping-stream')
 def api_scraping_stream():
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -725,7 +737,8 @@ def api_scraping_stream():
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                 
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
-@app.route('/send-friend-request', methods=['POST'])
+
+@main_bp.route('/send-friend-request', methods=['POST'])
 def send_friend_request():
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -798,7 +811,8 @@ def send_friend_request():
         flash('Please enter an email', 'error')
         
     return redirect(url_for('comms'))
-@app.route('/handle-friend-request/<int:request_id>', methods=['POST'])
+
+@main_bp.route('/handle-friend-request/<int:request_id>', methods=['POST'])
 def handle_friend_request(request_id):
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -830,7 +844,8 @@ def handle_friend_request(request_id):
         flash('Friend request rejected', 'success')
     
     return redirect(url_for('comms'))
-@app.route("/add-application", methods=["POST"])
+
+@main_bp.route("/add-application", methods=["POST"])
 def add_application():
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -882,7 +897,8 @@ def add_application():
             return jsonify({"error": str(e)}), 400
         flash('Error adding application: ' + str(e), 'error')
         return redirect(url_for("job_tracker"))
-@app.route('/api/job-applications', methods=['GET'])
+
+@main_bp.route('/api/job-applications', methods=['GET'])
 def get_applications():
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
@@ -900,7 +916,8 @@ def get_applications():
         'user_id': app.user_id,
         'scraped_job_id': app.scraped_job_id
     } for app in applications])
-@app.route('/share-application/<int:app_id>', methods=['POST'])
+
+@main_bp.route('/share-application/<int:app_id>', methods=['POST'])
 def share_application(app_id):
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -927,7 +944,8 @@ def share_application(app_id):
     else:
         flash('Friend not found', 'error')
     return redirect(url_for('job_tracker'))
-@app.route("/update-job-status", methods=["POST"])
+
+@main_bp.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
     new_status = request.json.get("new_status")
@@ -937,7 +955,8 @@ def update_job_status():
     job.status = new_status
     db.session.commit()
     return jsonify({"message": "Status updated"})
-@app.route('/job-tracker')
+
+@main_bp.route('/job-tracker')
 def job_tracker():
     if 'name' not in session:
         return redirect(url_for('home'))
@@ -957,7 +976,8 @@ def job_tracker():
         grouped=grouped,
         user=user
     )
-@app.route('/api/notifications', methods=['GET', 'POST'])
+
+@main_bp.route('/api/notifications', methods=['GET', 'POST'])
 def notifications():
     if 'name' not in session:
         return jsonify({'error': 'Not logged in'}), 401
@@ -1013,7 +1033,8 @@ def notifications():
         
         db.session.commit()
         return jsonify({'success': True})
-@app.route("/delete-application/<int:job_id>", methods=["DELETE"])
+
+@main_bp.route("/delete-application/<int:job_id>", methods=["DELETE"])
 def delete_application(job_id):
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -1034,7 +1055,8 @@ def delete_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-@app.route('/save-shared-application/<int:app_id>', methods=['POST'])
+
+@main_bp.route('/save-shared-application/<int:app_id>', methods=['POST'])
 def save_shared_application(app_id):
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -1085,7 +1107,7 @@ def save_shared_application(app_id):
         return jsonify({"error": str(e)}), 500
     
 
-@app.route("/update-application/<int:job_id>", methods=["POST"])
+@main_bp.route("/update-application/<int:job_id>", methods=["POST"])
 def update_application(job_id):
     if 'name' not in session:
         return jsonify({"error": "Not logged in"}), 401
