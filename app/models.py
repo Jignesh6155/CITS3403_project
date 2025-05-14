@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytz
 
 db = SQLAlchemy()
@@ -49,7 +49,7 @@ class JobApplication(db.Model):
     job_type = db.Column(db.String(100))
     closing_date = db.Column(db.DateTime)
     status = db.Column(db.String(20), nullable=False, default='Applied')
-    date_applied = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    date_applied = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     scraped_job_id = db.Column(db.Integer, db.ForeignKey('scraped_job.id'))
     
@@ -91,7 +91,7 @@ class ResumeAnalysis(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     filename = db.Column(db.String(255))
     content_type = db.Column(db.String(100))
-    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    upload_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     raw_text = db.Column(db.Text)
     keywords = db.Column(db.Text)  # JSON stringified list of extracted keywords
     suggested_jobs = db.Column(db.Text)  # JSON stringified list of job IDs
@@ -101,8 +101,8 @@ class FriendRequest(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_requests', lazy='dynamic'))
@@ -115,7 +115,7 @@ class Notification(db.Model):
     link = db.Column(db.String(255), nullable=True)  
     type = db.Column(db.String(50), nullable=False)  # e.g., 'friend_request', 'job_application_update', etc.
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationship to the user
     user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))

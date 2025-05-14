@@ -30,7 +30,7 @@
         <!-- Resume Upload and Analysis -->
         <section class="bg-white border border-gray-200 p-6 shadow rounded-lg flex flex-col max-h-[calc(100vh-120px)]">
           <h2 class="text-lg font-semibold text-gray-800 mb-4">Search with Resume</h2>
-          <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" id="resume-upload-form">
+          <form method="post" action="{{ url_for('main.upload') }}" enctype="multipart/form-data" id="resume-upload-form">
             <div id="resume-drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-gray-50 hover:border-indigo-400 transition cursor-pointer">
               <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-400 mb-3"></i>
               <p class="text-sm text-gray-600 font-medium">Click to upload or drag and drop</p>

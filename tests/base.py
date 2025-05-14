@@ -20,7 +20,9 @@ class FlaskTestBase(unittest.TestCase):
     def tearDown(self):
         db.session.remove()
         db.drop_all()
-        self.app_context.pop()
+        db.engine.dispose()    
+        self.app_context.pop() 
+
 
 # Example usage:
 # from tests.base import FlaskTestBase

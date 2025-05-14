@@ -1,7 +1,7 @@
 import unittest
 from app.models import db, User, JobApplication
 from tests.base import FlaskTestBase
-from datetime import datetime
+from datetime import datetime, timezone
 
 class TestModels(FlaskTestBase):
     """
@@ -26,7 +26,7 @@ class TestModels(FlaskTestBase):
             company='Test Co',
             location='Test City',
             job_type='Internship',
-            closing_date=datetime.utcnow(),
+            closing_date=datetime.now(timezone.utc),
             status='Applied',
             user=user
         )

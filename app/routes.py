@@ -1,6 +1,7 @@
 """
 Routes for the main blueprint of the application.
 All routes are registered under the 'main_bp' Blueprint.
+IMPORTANT: Do NOT use @app.route. Use @main_bp.route for all routes in this file.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
@@ -17,7 +18,7 @@ import time
 from app.utils.fuzzy_search import job_matches
 from app.utils import resume_processor
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytz
 import re
 # Simple in-memory rate limiting
@@ -25,7 +26,7 @@ request_counts = {}
 def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
     """Basic rate limiting"""
     key = f"{user_id}:{action}"
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     if key not in request_counts:
         request_counts[key] = []
@@ -91,7 +92,7 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                     # Estimate closing_date from closing_in
                     if closing_in:
                         closing_in_lower = closing_in.lower()
-                        now = datetime.now(perth_tz)
+                        now = datetime.now(timezone.utc)
                         days_match = re.search(r'(\d+)\s*days?', closing_in_lower)
                         months_match = re.search(r'(\d+)\s*months?', closing_in_lower)
                         hours_match = re.search(r'(\d+)\s*hours?', closing_in_lower)
@@ -241,7 +242,7 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
         session["name"] = name
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("main.dashboard"))
     return render_template("index.html", error="All fields are required.")
 
 @main_bp.route("/signin", methods=["POST"])
@@ -252,7 +253,7 @@ def signin():
         user = User.query.filter_by(email=email, password=password).first()
         if user:
             session["name"] = user.name
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("main.dashboard"))
         else:
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
@@ -260,10 +261,10 @@ def signin():
 @main_bp.route("/dashboard")
 def dashboard():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     status_counts_dict = {status: 0 for status in all_statuses}
@@ -371,15 +372,15 @@ def dashboard():
 @main_bp.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("home"))
+    return redirect(url_for("main.home"))
 
 @main_bp.route("/job-search")
 def job_search():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     scraped_jobs = ScrapedJob.query.all()
     for job in scraped_jobs:
         try:
@@ -395,10 +396,10 @@ def job_search():
 def analytics():
     # --- auth guard -------------------------------------------------------
     if "name" not in session:
-        return redirect(url_for("home"))
+        return redirect(url_for("main.home"))
     user = User.query.filter_by(name=session["name"]).first()
     if not user:
-        return redirect(url_for("home"))
+        return redirect(url_for("main.home"))
     # --- grab all of this user's applications ----------------------------
     applications = JobApplication.query.filter_by(user=user).all()
     total_apps   = len(applications)
@@ -516,10 +517,10 @@ def toggle_favorite(friend_id):
 @main_bp.route("/comms")
 def comms():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     
     # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
@@ -616,11 +617,11 @@ def upload():
                 break
         session['resume_keywords'] = job_titles
         session['suggested_jobs'] = suggestions
-        return redirect(url_for('job_search'))
+        return redirect(url_for('main.job_search'))
     # If no file, clear session and redirect
     session['resume_keywords'] = []
     session['suggested_jobs'] = []
-    return redirect(url_for('job_search'))
+    return redirect(url_for('main.job_search'))
 
 @main_bp.route("/api/scraped-jobs")
 def api_scraped_jobs():
@@ -746,7 +747,7 @@ def api_scraping_stream():
 @main_bp.route('/send-friend-request', methods=['POST'])
 def send_friend_request():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     
     email = request.form.get('email')
     if email:
@@ -755,22 +756,22 @@ def send_friend_request():
         # Rate limiting
         if not rate_limit_check(current_user.id, 'friend_request', max_requests=10, window_seconds=3600):
             flash('You have sent too many friend requests. Please try again later.', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
             
         friend = User.query.filter_by(email=email).first()
         
         if not friend:
             flash('User not found', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
             
         if friend.id == current_user.id:
             flash('You cannot send a friend request to yourself', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
             
         # Check if already friends
         if friend in current_user.friends:
             flash('You are already friends with this user', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
             
         # Check if request already exists
         existing_request = FriendRequest.query.filter_by(
@@ -779,7 +780,7 @@ def send_friend_request():
         
         if existing_request:
             flash('Friend request already sent', 'error')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
             
         # Check if there's a request from the other user
         existing_reverse_request = FriendRequest.query.filter_by(
@@ -794,7 +795,7 @@ def send_friend_request():
             friend.friends.append(current_user)
             db.session.commit()
             flash(f'You are now friends with {friend.name}', 'success')
-            return redirect(url_for('comms'))
+            return redirect(url_for('main.comms'))
         
         # Create a new request
         new_request = FriendRequest(
@@ -807,7 +808,7 @@ def send_friend_request():
         create_notification(
             friend.id, 
             f"{current_user.name} sent you a friend request", 
-            link=url_for('comms'), 
+            link=url_for('main.comms'), 
             notification_type="friend_request"
         )
         
@@ -815,12 +816,12 @@ def send_friend_request():
     else:
         flash('Please enter an email', 'error')
         
-    return redirect(url_for('comms'))
+    return redirect(url_for('main.comms'))
 
 @main_bp.route('/handle-friend-request/<int:request_id>', methods=['POST'])
 def handle_friend_request(request_id):
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
         
     current_user = User.query.filter_by(name=session['name']).first()
     friend_request = FriendRequest.query.get(request_id)
@@ -828,7 +829,7 @@ def handle_friend_request(request_id):
     # Security checks
     if not friend_request or friend_request.receiver_id != current_user.id:
         flash('Invalid request', 'error')
-        return redirect(url_for('comms'))
+        return redirect(url_for('main.comms'))
         
     action = request.form.get('action')
     
@@ -848,7 +849,7 @@ def handle_friend_request(request_id):
         db.session.commit()
         flash('Friend request rejected', 'success')
     
-    return redirect(url_for('comms'))
+    return redirect(url_for('main.comms'))
 
 @main_bp.route("/add-application", methods=["POST"])
 def add_application():
@@ -895,13 +896,13 @@ def add_application():
         db.session.commit()
         if request.is_json:
             return jsonify({"success": True})
-        return redirect(url_for("job_tracker"))
+        return redirect(url_for("main.job_tracker"))
     except Exception as e:
         db.session.rollback()
         if request.is_json:
             return jsonify({"error": str(e)}), 400
         flash('Error adding application: ' + str(e), 'error')
-        return redirect(url_for("job_tracker"))
+        return redirect(url_for("main.job_tracker"))
 
 @main_bp.route('/api/job-applications', methods=['GET'])
 def get_applications():
@@ -925,12 +926,12 @@ def get_applications():
 @main_bp.route('/share-application/<int:app_id>', methods=['POST'])
 def share_application(app_id):
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     user = User.query.filter_by(name=session['name']).first()
     application = JobApplication.query.get(app_id)
     if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
-        return redirect(url_for('job_tracker'))
+        return redirect(url_for('main.job_tracker'))
     friend_id = request.form.get('friend_id')
     friend = User.query.get(friend_id)
     if friend and friend in user.friends:
@@ -940,7 +941,7 @@ def share_application(app_id):
             create_notification(
                 friend.id,
                 f"{user.name} shared a job application at {application.company} with you",
-                link=url_for('job_tracker'),
+                link=url_for('main.job_tracker'),
                 notification_type="application_shared"
             )
             flash(f'Application shared with {friend.name}', 'success')
@@ -948,7 +949,7 @@ def share_application(app_id):
             flash('Application already shared with this friend', 'error')
     else:
         flash('Friend not found', 'error')
-    return redirect(url_for('job_tracker'))
+    return redirect(url_for('main.job_tracker'))
 
 @main_bp.route("/update-job-status", methods=["POST"])
 def update_job_status():
@@ -964,11 +965,11 @@ def update_job_status():
 @main_bp.route('/job-tracker')
 def job_tracker():
     if 'name' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     
     user = User.query.filter_by(name=session['name']).first()
     if not user:
-        return redirect(url_for('home'))
+        return redirect(url_for('main.home'))
     # Only applications owned by the current user
     applications = JobApplication.query.filter_by(user=user).all()
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
@@ -1152,7 +1153,7 @@ def update_application(job_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
     
-@app.route('/update-name', methods=['POST'])
+@main_bp.route('/update-name', methods=['POST'])
 def update_name():
     if 'name' not in session:
         return jsonify({"success": False, "message": "Not logged in"}), 401
@@ -1193,7 +1194,7 @@ def update_name():
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
-@app.route('/update-password', methods=['POST'])
+@main_bp.route('/update-password', methods=['POST'])
 def update_password():
     if 'name' not in session:
         return jsonify({"success": False, "message": "Not logged in"}), 401

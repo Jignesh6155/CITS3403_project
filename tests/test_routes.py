@@ -18,7 +18,7 @@ class TestRoutes(FlaskTestBase):
     def test_home(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'index', response.data)
+        self.assertIn(b'CareerLink', response.data)
 
     def test_signup_and_signin(self):
         # Signup
@@ -34,17 +34,17 @@ class TestRoutes(FlaskTestBase):
 
     def test_dashboard_requires_login(self):
         response = self.client.get('/dashboard', follow_redirects=True)
-        self.assertIn(b'index', response.data)
+        self.assertIn(b'CareerLink', response.data)
 
     def test_logout(self):
         with self.client.session_transaction() as sess:
             sess['name'] = 'testuser'
         response = self.client.get('/logout', follow_redirects=True)
-        self.assertIn(b'index', response.data)
+        self.assertIn(b'CareerLink', response.data)
 
     def test_job_search_requires_login(self):
         response = self.client.get('/job-search', follow_redirects=True)
-        self.assertIn(b'index', response.data)
+        self.assertIn(b'CareerLink', response.data)
 
     # Add more tests for other routes and API endpoints as needed
     # For example, test /api/scraped-jobs, /add-application, etc.

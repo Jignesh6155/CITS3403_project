@@ -1,4 +1,4 @@
-import PyPDF2
+import pypdf
 import docx2txt
 import re
 import json
@@ -19,7 +19,7 @@ def extract_text_from_pdf(file_stream):
     try:
         if isinstance(file_stream, bytes):
             file_stream = io.BytesIO(file_stream)
-        reader = PyPDF2.PdfReader(file_stream)
+        reader = pypdf.PdfReader(file_stream)
         text = ""
         for page in reader.pages:
             text += page.extract_text() + "\n"
@@ -70,13 +70,13 @@ def extract_keywords_openai(text, direction=None, model=None, api_key=None):
             )
         }
     ]
-    print("[DEBUG] Sending to OpenAI chat:", json.dumps(messages, indent=2))
+    # print("[DEBUG] Sending to OpenAI chat:", json.dumps(messages, indent=2))
     response = client.chat.completions.create(
         model=model,
         messages=messages,
         max_tokens=50 
     )
-    print("[DEBUG] Received from OpenAI chat:", response.choices[0].message.content.strip())
+    # print("[DEBUG] Received from OpenAI chat:", response.choices[0].message.content.strip())
     keywords_str = response.choices[0].message.content.strip()
     # Try to split by comma first
     keywords = [kw.strip() for kw in keywords_str.split(",") if kw.strip()]

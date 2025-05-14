@@ -18,23 +18,23 @@
     <aside class="group bg-gray-900 text-white w-20 hover:w-56 transition-all duration-300 flex flex-col py-6 overflow-hidden">
       <div class="flex justify-center mb-10"><div class="w-10 h-10 bg-white"></div></div>
       <nav class="flex flex-col space-y-4 px-0 group-hover:px-2 items-center group-hover:items-start">
-        <a href="{{ url_for('dashboard') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='dashboard'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('main.dashboard') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='dashboard'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="layout-dashboard" class="w-6 h-6 {% if active_page=='dashboard'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Dashboard</span>
         </a>
-        <a href="{{ url_for('job_search') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='job-search'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('main.job_search') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='job-search'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="file-text" class="w-6 h-6 {% if active_page=='job-search'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Job Search</span>
         </a>
-        <a href="{{ url_for('job_tracker') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='job-tracker'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('main.job_tracker') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='job-tracker'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="check-circle" class="w-6 h-6 {% if active_page=='job-tracker'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Job Tracker</span>
         </a>
-        <a href="{{ url_for('analytics') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='analytics'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('main.analytics') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='analytics'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="bar-chart-3" class="w-6 h-6 {% if active_page=='analytics'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Analytics</span>
         </a>
-        <a href="{{ url_for('comms') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='comms'%}bg-gray-800{%endif%} hover:bg-gray-800">
+        <a href="{{ url_for('main.comms') }}" class="px-2 py-2 w-full flex items-center justify-center group-hover:justify-start gap-4 {% if active_page=='comms'%}bg-gray-800{%endif%} hover:bg-gray-800">
           <i data-lucide="messages-square" class="w-6 h-6 {% if active_page=='comms'%}text-indigo-400{%else%}text-gray-400 group-hover:text-indigo-400{%endif%}"></i>
           <span class="hidden group-hover:inline-block whitespace-nowrap">Friends</span>
         </a>
@@ -42,7 +42,7 @@
       <div class="flex-1"></div>
       
       <!-- Logout centered vertically in the sidebar -->
-      <a href="{{ url_for('logout') }}" class="px-2 py-2 w-full flex items-center justify-center gap-4 hover:bg-gray-800 mt-auto">
+      <a href="{{ url_for('main.logout') }}" class="px-2 py-2 w-full flex items-center justify-center gap-4 hover:bg-gray-800 mt-auto">
         <i data-lucide="log-out" class="w-6 h-6 text-gray-400 group-hover:text-indigo-400"></i>
         <span class="hidden group-hover:inline-block whitespace-nowrap">Logout</span>
       </a>

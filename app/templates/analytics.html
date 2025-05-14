@@ -52,7 +52,7 @@
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">📂 Application Status Breakdown</h2>
       <canvas id="statusDonut" class="w-full h-32"></canvas>
-      <p class="text-xs text-gray-500 mt-2">Tip: aim to move more apps into “Interviewing” &amp; “Offer”!</p>
+      <p class="text-xs text-gray-500 mt-2">Tip: aim to move more apps into "Interviewing" &amp; "Offer"!</p>
     </div>
 
     <!-- Weekly Activity -->
@@ -138,58 +138,90 @@
     </div>
   </section>
 </main>
+
+{% for link in [
+    ('main.dashboard', 'Dashboard'),
+    ('main.job_search', 'Job Search'),
+    ('main.job_tracker', 'Job Tracker'),
+    ('main.analytics', 'Analytics')
+] %}
+    {# Example usage: <a href="{{ url_for(link[0]) }}">{{ link[1] }}</a> #}
+{% endfor %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="application/json" id="status-labels">{{ status_labels | tojson }}</script>
+<script type="application/json" id="status-counts">{{ status_counts | tojson }}</script>
+<script type="application/json" id="weekly-labels">{{ weekly_labels | tojson }}</script>
+<script type="application/json" id="weekly-apps">{{ weekly_apps | tojson }}</script>
+<script type="application/json" id="weekly-int">{{ weekly_int | tojson }}</script>
+<script type="application/json" id="weekly-off">{{ weekly_off | tojson }}</script>
+<script type="application/json" id="outcome-labels">{{ outcome_labels | tojson }}</script>
+<script type="application/json" id="outcome-counts">{{ outcome_counts | tojson }}</script>
+<script type="application/json" id="type-labels">{{ type_labels | tojson }}</script>
+<script type="application/json" id="type-counts">{{ type_counts | tojson }}</script>
+<script type="application/json" id="success-rate">{{ [success_rate, 100 - success_rate] | tojson }}</script>
 <script>
 const indigo='rgba(99,102,241,1)', indigoT='rgba(99,102,241,.15)';
 const green ='rgba(34,197,94,1)',  greenT ='rgba(34,197,94,.15)';
 const yellow='rgba(234,179,8,1)',  yellowT='rgba(234,179,8,.15)';
 
+const statusLabels = JSON.parse(document.getElementById('status-labels').textContent);
+const statusCounts = JSON.parse(document.getElementById('status-counts').textContent);
+const weeklyLabels = JSON.parse(document.getElementById('weekly-labels').textContent);
+const weeklyApps = JSON.parse(document.getElementById('weekly-apps').textContent);
+const weeklyInt = JSON.parse(document.getElementById('weekly-int').textContent);
+const weeklyOff = JSON.parse(document.getElementById('weekly-off').textContent);
+const outcomeLabels = JSON.parse(document.getElementById('outcome-labels').textContent);
+const outcomeCounts = JSON.parse(document.getElementById('outcome-counts').textContent);
+const typeLabels = JSON.parse(document.getElementById('type-labels').textContent);
+const typeCounts = JSON.parse(document.getElementById('type-counts').textContent);
+const successRateArr = JSON.parse(document.getElementById('success-rate').textContent);
+
 /* STATUS DONUT */
 new Chart(statusDonut,{type:'doughnut',data:{
-  labels: {{ status_labels|safe }},
-  datasets:[{data:{{ status_counts|safe }},
+  labels: statusLabels,
+  datasets:[{data: statusCounts,
              backgroundColor:['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899','#f97316','#22d3ee']}]
 },options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom'}}}});
 
 /* WEEKLY BAR */
 new Chart(weeklyBar,{type:'bar',data:{
-  labels: {{ weekly_labels|safe }},
+  labels: weeklyLabels,
   datasets:[
-    {label:'Apps',       data:{{ weekly_apps|safe }},backgroundColor:indigo},
-    {label:'Interviews', data:{{ weekly_int |safe }},backgroundColor:green},
-    {label:'Offers',     data:{{ weekly_off |safe }},backgroundColor:yellow}
+    {label:'Apps',       data: weeklyApps,backgroundColor:indigo},
+    {label:'Interviews', data: weeklyInt,backgroundColor:green},
+    {label:'Offers',     data: weeklyOff,backgroundColor:yellow}
   ]
 },options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
 
 /* OFFERS vs REJECTIONS */
 new Chart(outcomeBar,{type:'bar',data:{
-  labels: {{ outcome_labels|safe }},
-  datasets:[{data:{{ outcome_counts|safe }},backgroundColor:['#4ade80','#f87171']}]
+  labels: outcomeLabels,
+  datasets:[{data: outcomeCounts,backgroundColor:['#4ade80','#f87171']}]
 },options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
 
 /* SUCCESS LINE */
 new Chart(successLine,{type:'line',data:{
-  labels: {{ weekly_labels|safe }},
+  labels: weeklyLabels,
   datasets:[
-    {label:'Apps',       data:{{ weekly_apps|safe }},borderColor:indigo,backgroundColor:indigoT,tension:.4},
-    {label:'Interviews', data:{{ weekly_int |safe }},borderColor:green, backgroundColor:greenT, tension:.4},
-    {label:'Offers',     data:{{ weekly_off |safe }},borderColor:yellow,backgroundColor:yellowT,tension:.4}
+    {label:'Apps',       data: weeklyApps,borderColor:indigo,backgroundColor:indigoT,tension:.4},
+    {label:'Interviews', data: weeklyInt,borderColor:green, backgroundColor:greenT, tension:.4},
+    {label:'Offers',     data: weeklyOff,borderColor:yellow,backgroundColor:yellowT,tension:.4}
   ]
 },options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
 
 /* TYPE BAR */
 new Chart(typeBar,{type:'bar',data:{
-  labels: {{ type_labels|safe }},
-  datasets:[{data:{{ type_counts|safe }},backgroundColor:'#6366f1'}]
+  labels: typeLabels,
+  datasets:[{data: typeCounts,backgroundColor:'#6366f1'}]
 },options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 
 /* SUCCESS GAUGE */
 new Chart(successGauge,{type:'doughnut',data:{
   labels:['Success','Remaining'],
-  datasets:[{data:[{{ success_rate }},{{ 100 - success_rate }}],
+  datasets:[{data: successRateArr,
              backgroundColor:['#10b981','#e5e7eb']}]
 },options:{responsive:true,cutout:'75%',plugins:{legend:{display:false}}}});
 </script>

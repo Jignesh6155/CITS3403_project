@@ -1,6 +1,10 @@
 from tests.base import FlaskTestBase
 from app.models import db, User, JobApplication, JobSearch, ScrapedJob, ResumeAnalysis, FriendRequest, Notification
-from datetime import datetime
+from datetime import datetime, timezone
+import warnings
+
+warnings.simplefilter("ignore", ResourceWarning)
+warnings.simplefilter("ignore", DeprecationWarning)
 
 class TestSampleData(FlaskTestBase):
     """
@@ -24,7 +28,7 @@ class TestSampleData(FlaskTestBase):
             title='Graduate Software Engineer',
             posted_date='2024-06-01',
             closing_in='10 days',
-            closing_date=datetime.utcnow(),
+            closing_date=datetime.now(timezone.utc),
             ai_summary='Great job for new grads.',
             overview='["Develop software"]',
             responsibilities='["Write code"]',
@@ -47,7 +51,7 @@ class TestSampleData(FlaskTestBase):
             company='Tech Corp',
             location='Perth',
             job_type='Graduate',
-            closing_date=datetime.utcnow(),
+            closing_date=datetime.now(timezone.utc),
             status='Applied',
             user_id=self.user1.id,
             scraped_job_id=self.scraped_job.id
