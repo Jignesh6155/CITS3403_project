@@ -1,0 +1,20 @@
+To run unit tests:
+python3 -m unittest discover tests
+
+
+What was added:
+    tests/test_utils.py
+        Unit tests for app.utils.fuzzy_search and app.utils.resume_processor.
+        Covers fuzzy matching, job matching, text extraction, and mocks OpenAI API calls.
+        Comment: If you want to test with real files, add sample PDFs/DOCX and update the tests.
+    tests/test_routes.py
+        Unit tests for major Flask routes using Flask's test client.
+        Covers home, signup, signin, dashboard (auth required), logout, and job search.
+        Uses TestingConfig for isolation.
+        Comment: To test more endpoints, add methods and set session['name'] for authenticated routes.
+    tests/test_models.py
+        Unit tests for User and JobApplication models.
+        Tests creation, relationships, and basic CRUD.
+        Comment: Extend to test more models and relationships as needed.
+    tests/__init__.py
+        Empty file to make tests a package (required for some runners/imports).
