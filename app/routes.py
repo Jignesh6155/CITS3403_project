@@ -1,3 +1,8 @@
+"""
+Routes for the main blueprint of the application.
+All routes are registered under the 'main_bp' Blueprint.
+"""
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
 from app.models import db, User, JobApplication, FriendRequest, Notification
 from app.models import ScrapedJob, application_shares
