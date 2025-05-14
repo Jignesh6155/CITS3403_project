@@ -1124,3 +1124,86 @@ def update_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/update-name', methods=['POST'])
+def update_name():
+    if 'name' not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+        
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+        
+    new_name = request.form.get('new_name')
+    if not new_name:
+        return jsonify({"success": False, "message": "New name is required"}), 400
+        
+    # Update user's name
+    old_name = user.name
+    user.name = new_name
+    
+    try:
+        db.session.commit()
+        # Update session
+        session['name'] = new_name
+        
+        # Create notification
+        notification = Notification(
+            user_id=user.id,
+            content=f"Your name has been updated from {old_name} to {new_name}",
+            type="account_update",
+            is_read=False
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Name updated successfully",
+            "refresh": True
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/update-password', methods=['POST'])
+def update_password():
+    if 'name' not in session:
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+        
+    user = User.query.filter_by(name=session['name']).first()
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+        
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    
+    if not current_password or not new_password:
+        return jsonify({"success": False, "message": "All fields are required"}), 400
+        
+    if user.password != current_password:
+        return jsonify({"success": False, "message": "Current password is incorrect"}), 400
+        
+    # Update user's password
+    user.password = new_password
+    
+    try:
+        db.session.commit()
+        
+        # Create notification
+        notification = Notification(
+            user_id=user.id,
+            content="Your password has been updated successfully",
+            type="account_update",
+            is_read=False
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Password updated successfully"
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500

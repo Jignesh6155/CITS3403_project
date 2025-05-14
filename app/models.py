@@ -119,3 +119,4 @@ class Notification(db.Model):
     
     # Relationship to the user
     user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))
+
