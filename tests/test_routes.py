@@ -50,6 +50,41 @@ class TestRoutes(FlaskTestBase):
         response = self.client.get('/comms', follow_redirects=True) # TODO: we need to change this url to friends
         self.assertIn(b'CareerLink', response.data)
 
+    def login(self, email, password):
+        return self.client.post('/signin', data={
+            'email': email,
+            'password': password
+        }, follow_redirects=True)
+
+    def test_navigate_home(self):
+        response = self.client.get('/')
+        self.assertIn(b'CareerLink', response.data)
+
+    def test_navigate_dashboard(self):
+        self.login('test@example.com', 'testpass')
+        response = self.client.get('/dashboard')
+        self.assertIn(b'Dashboard', response.data)
+
+    def test_navigate_job_search(self):
+        self.login('test@example.com', 'testpass')
+        response = self.client.get('/job-search')
+        self.assertIn(b'Career Explorer', response.data)
+
+    def test_navigate_analytics(self):
+        self.login('test@example.com', 'testpass')
+        response = self.client.get('/analytics')
+        self.assertIn(b'Analytics', response.data)
+
+    def test_navigate_job_tracker(self):
+        self.login('test@example.com', 'testpass')
+        response = self.client.get('/job-tracker')
+        self.assertIn(b'Your Job Tracker', response.data)
+
+    def test_navigate_comms(self):
+        self.login('test@example.com', 'testpass')
+        response = self.client.get('/comms')
+        self.assertIn(b'Friends', response.data)
+
     # Add more tests for other routes and API endpoints as needed
     # For example, test /api/scraped-jobs, /add-application, etc.
     # To test authenticated endpoints, set session['name'] as above.

@@ -24,6 +24,7 @@ import re
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
 from flask import current_app
+from app.extensions import csrf
 
 
 # Simple in-memory rate limiting
@@ -62,7 +63,7 @@ def create_notification(user_id, content, link=None, notification_type="general"
 # Global variables (for testing)
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
-SCRAPE_SIZE = 3
+SCRAPE_SIZE = 1
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
     if current_app.config.get('DEBUG', False):
         print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
@@ -692,28 +693,21 @@ def api_scraped_jobs():
         return jsonify({"error": str(e)}), 500
 
 @main_bp.route('/api/start-scraping', methods=['POST'])
+@csrf.exempt
+@login_required
 def api_start_scraping():
     try:
-        if 'name' not in session:
-            return jsonify({"error": "Not logged in"}), 401
-            
-        user = User.query.filter_by(name=session['name']).first()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-            
+        user = current_user
         data = request.get_json(force=True) or {}
         if current_app.config.get('DEBUG', False):
             print("[DEBUG] Received scraping parameters:", data)
-        
         jobtype = data.get('jobtype', 'internships')
         discipline = data.get('discipline') or None
         location = data.get('location') or None
         keyword = data.get('keyword') or None
-        
         # Rate limit check
         if not rate_limit_check(user.id, 'scraping'):
             return jsonify({"error": "Rate limit exceeded. Please wait before starting another search."}), 429
-        
         if current_app.config.get('DEBUG', False):
             print(f"[DEBUG] Starting background scraper thread with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
         threading.Thread(target=background_scraper, args=(user.id, jobtype, discipline, location, keyword), daemon=True).start()
@@ -727,91 +721,73 @@ def api_start_scraping():
         return jsonify({"error": str(e)}), 500
 
 @main_bp.route('/api/scraping-stream')
+@login_required
 def api_scraping_stream():
-    if 'name' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-        
     def event_stream():
+        print("[SSE] event_stream started")
         while True:
             try:
-                # Use a 30-second timeout to prevent the connection from blocking forever
                 job = live_job_queue.get(timeout=30)
-                
-                # Format tags for consistency
-                if 'status' not in job:  # Only format if it's a job, not a control message
+                print("[SSE] Got job from queue:", job)
+                if 'status' not in job:
                     job['tags'] = {
                         'location': job.get('tag_location'),
                         'jobtype': job.get('tag_jobtype'),
                         'category': job.get('tag_category')
                     }
-                
                 yield f"data: {json.dumps(job)}\n\n"
-                
-                # If this was the completion message, we're done
                 if job.get('status') == 'complete':
+                    print("[SSE] Scraping complete, breaking loop")
                     break
             except queue.Empty:
-                # Send a ping event every 30 seconds to keep the connection alive
+                print("[SSE] Queue empty, sending ping")
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
-                
     return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
 
 @main_bp.route('/send-friend-request', methods=['POST'])
+@login_required
 def send_friend_request():
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    
     email = request.form.get('email')
+    user = current_user
     if email:
-        current_user = User.query.filter_by(name=session['name']).first()
-        
         # Rate limiting
-        if not rate_limit_check(current_user.id, 'friend_request', max_requests=10, window_seconds=3600):
+        if not rate_limit_check(user.id, 'friend_request', max_requests=10, window_seconds=3600):
             flash('You have sent too many friend requests. Please try again later.', 'error')
             return redirect(url_for('main.comms'))
-            
         friend = User.query.filter_by(email=email).first()
-        
         if not friend:
             flash('User not found', 'error')
             return redirect(url_for('main.comms'))
-            
-        if friend.id == current_user.id:
+        if friend.id == user.id:
             flash('You cannot send a friend request to yourself', 'error')
             return redirect(url_for('main.comms'))
-            
         # Check if already friends
-        if friend in current_user.friends:
+        if friend in user.friends:
             flash('You are already friends with this user', 'error')
             return redirect(url_for('main.comms'))
-            
         # Check if request already exists
         existing_request = FriendRequest.query.filter_by(
-            sender_id=current_user.id, receiver_id=friend.id, status='pending'
+            sender_id=user.id, receiver_id=friend.id, status='pending'
         ).first()
-        
         if existing_request:
             flash('Friend request already sent', 'error')
             return redirect(url_for('main.comms'))
-            
         # Check if there's a request from the other user
         existing_reverse_request = FriendRequest.query.filter_by(
-            sender_id=friend.id, receiver_id=current_user.id, status='pending'
+            sender_id=friend.id, receiver_id=user.id, status='pending'
         ).first()
-        
         if existing_reverse_request:
             # Auto-accept the other request
             existing_reverse_request.status = 'accepted'
             # Ensure bidirectional friendship
-            current_user.friends.append(friend)
-            friend.friends.append(current_user)
+            user.friends.append(friend)
+            friend.friends.append(user)
             db.session.commit()
             flash(f'You are now friends with {friend.name}', 'success')
             return redirect(url_for('main.comms'))
-        
         # Create a new request
         new_request = FriendRequest(
-            sender_id=current_user.id,
+            sender_id=user.id,
             receiver_id=friend.id,
             status='pending'
         )
@@ -819,58 +795,44 @@ def send_friend_request():
         db.session.commit()
         create_notification(
             friend.id, 
-            f"{current_user.name} sent you a friend request", 
+            f"{user.name} sent you a friend request", 
             link=url_for('main.comms'), 
             notification_type="friend_request"
         )
-        
         flash('Friend request sent', 'success')
     else:
         flash('Please enter an email', 'error')
-        
     return redirect(url_for('main.comms'))
 
 @main_bp.route('/handle-friend-request/<int:request_id>', methods=['POST'])
+@login_required
 def handle_friend_request(request_id):
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-        
-    current_user = User.query.filter_by(name=session['name']).first()
+    user = current_user
     friend_request = FriendRequest.query.get(request_id)
-    
     # Security checks
-    if not friend_request or friend_request.receiver_id != current_user.id:
+    if not friend_request or friend_request.receiver_id != user.id:
         flash('Invalid request', 'error')
         return redirect(url_for('main.comms'))
-        
     action = request.form.get('action')
-    
     if action == 'accept':
         friend_request.status = 'accepted'
         # Add to friends (both ways)
         sender = User.query.get(friend_request.sender_id)
-        
         # Ensure bidirectional friendship
-        current_user.friends.append(sender)
-        sender.friends.append(current_user)
-        
+        user.friends.append(sender)
+        sender.friends.append(user)
         db.session.commit()
         flash(f'You are now friends with {sender.name}', 'success')
     elif action == 'reject':
         friend_request.status = 'rejected'
         db.session.commit()
         flash('Friend request rejected', 'success')
-    
     return redirect(url_for('main.comms'))
 
 @main_bp.route("/add-application", methods=["POST"])
+@login_required
 def add_application():
-    if 'name' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-        
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    user = current_user
     try:
         if request.is_json:
             # Handle JSON request from job search page
@@ -936,10 +898,9 @@ def get_applications():
     } for app in applications])
 
 @main_bp.route('/share-application/<int:app_id>', methods=['POST'])
+@login_required
 def share_application(app_id):
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    user = User.query.filter_by(name=session['name']).first()
+    user = current_user
     application = JobApplication.query.get(app_id)
     if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
@@ -992,11 +953,9 @@ def job_tracker():
     )
 
 @main_bp.route('/api/notifications', methods=['GET', 'POST'])
+@login_required
 def notifications():
-    if 'name' not in session:
-        return jsonify({'error': 'Not logged in'}), 401
-    
-    user = User.query.filter_by(name=session['name']).first()
+    user = current_user
     
     if request.method == 'GET':
         # Get unread count for the navbar indicator
@@ -1122,41 +1081,31 @@ def save_shared_application(app_id):
     
 
 @main_bp.route("/update-application/<int:job_id>", methods=["POST"])
+@login_required
 def update_application(job_id):
-    if 'name' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-        
-    user = User.query.filter_by(name=session["name"]).first()
+    user = current_user
     if not user:
         return jsonify({"error": "User not found"}), 404
-        
     application = JobApplication.query.get(job_id)
     if not application:
         return jsonify({"error": "Application not found"}), 404
-        
     if application.user_id != user.id:
         return jsonify({"error": "Not authorized"}), 403
-        
     try:
         # Update fields
         application.title = request.form.get('title')
         application.company = request.form.get('company')
         application.location = request.form.get('location')
         application.job_type = request.form.get('job_type')
-        
         closing_date = request.form.get('closing_date')
         if closing_date:
             application.closing_date = datetime.strptime(closing_date, "%Y-%m-%d")
         else:
             application.closing_date = None
-            
         new_status = request.form.get('status')
         application.status = new_status
-        
         db.session.commit()
-        
         return jsonify({"success": True})
-        
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

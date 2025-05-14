@@ -400,6 +400,12 @@ function onDragStart(event) {
   event.dataTransfer.setData("text/plain", event.target.id);
 }
 
+// Helper to get CSRF token from hidden input
+function getCSRFToken() {
+  const input = document.querySelector('input[name="csrf_token"]');
+  return input ? input.value : '';
+}
+
 function onDrop(event, columnId) {
   const id = event.dataTransfer.getData("text/plain");
   const jobBox = document.getElementById(id);
@@ -407,7 +413,10 @@ function onDrop(event, columnId) {
   const jobId = id.replace("job-", "");
   fetch("/update-job-status", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken()
+    },
     body: JSON.stringify({ job_id: jobId, new_status: columnId })
   }).then(response => {
     if (!response.ok) console.error("Failed to update job status.");
@@ -418,7 +427,10 @@ function deleteJob(id) {
   const jobId = id.replace('job-', '');
   fetch(`/delete-application/${jobId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' }
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken()
+    }
   })
   .then(response => {
     if (!response.ok) {
@@ -453,7 +465,10 @@ document.getElementById('shareForm').onsubmit = function(e) {
   const friendId = this.friend_id.value;
   fetch(`/share-application/${currentAppId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': getCSRFToken()
+    },
     body: `friend_id=${friendId}`
   }).then(response => {
     if (response.redirected) {
@@ -622,6 +637,9 @@ editForm.addEventListener('submit', function(e) {
   
   fetch(`/update-application/${jobId}`, {
     method: 'POST',
+    headers: {
+      'X-CSRFToken': getCSRFToken()
+    },
     body: new FormData(this),
   })
   .then(response => {

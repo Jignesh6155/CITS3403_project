@@ -4,7 +4,7 @@ from app.models import db
 from flask_login import LoginManager
 from app.models import load_user
 # --- Flask-WTF CSRF protection ---
-from flask_wtf import CSRFProtect
+from app.extensions import csrf
 import os
 
 # Try to import Config from app.config, fallback to None if not present
@@ -33,7 +33,7 @@ def create_app(config_object=None):
     # Register the user_loader functions
     login.user_loader(load_user)
     # --- Flask-WTF CSRF setup ---
-    csrf = CSRFProtect(app)  # This enables CSRF protection for all forms
+    csrf.init_app(app)  # This enables CSRF protection for all forms
     # Import and register blueprint
     from app.routes import main_bp
     app.register_blueprint(main_bp)

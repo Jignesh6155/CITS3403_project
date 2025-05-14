@@ -323,35 +323,69 @@ function setSelectValue(selectId, value) {
 
 // Add the saveJob function at global scope
 function saveJob(jobData) {
+  // Prepare payload for backend
+  const payload = {
+    title: jobData.title,
+    company: jobData.company,
+    location: jobData.location || (jobData.tags?.location || ''),
+    job_type: jobData.job_type || (jobData.tags?.jobtype || ''),
+    closing_date: jobData.closing_date || '',
+    status: 'Saved',
+  };
+  if (jobData.id) payload.scraped_job_id = jobData.id;
+
+  // Find the button if possible for feedback
+  let btn = null;
+  if (event && event.target && event.target.classList.contains('save-job-btn')) {
+    btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
+  }
+
   fetch('/add-application', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      title: jobData.title,
-      company: jobData.company,
-      location: jobData.tags?.location || '',
-      job_type: jobData.tags?.jobtype || '',
-      closing_date: jobData.closing_date,
-      status: 'Saved',
-      date_applied: new Date().toISOString().split('T')[0]
-    })
+    body: JSON.stringify(payload)
   })
-  .then(response => {
+  .then(async response => {
+    const contentType = response.headers.get('content-type');
     if (!response.ok) {
-      throw new Error('Network response was not ok');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save job');
+      } else {
+        throw new Error('You may not be logged in, or an unexpected error occurred.');
+      }
     }
-    return response.json();
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    } else {
+      throw new Error('Unexpected server response. Please log in again.');
+    }
   })
   .then(data => {
     if (data.success) {
+      if (btn) {
+        btn.innerHTML = 'Saved!';
+        btn.classList.remove('bg-white', 'text-indigo-600', 'hover:bg-indigo-50');
+        btn.classList.add('bg-gray-100', 'text-gray-600', 'cursor-not-allowed');
+      }
       showToast('Job saved successfully!', 'success');
     } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Job';
+      }
       throw new Error(data.error || 'Failed to save job');
     }
   })
   .catch(error => {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Save Job';
+    }
     console.error('Error:', error);
     showToast(error.message || 'Failed to save job', 'error');
   });

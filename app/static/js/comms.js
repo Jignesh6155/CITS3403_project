@@ -537,3 +537,59 @@ function switchTab(tabName) {
 window.filterFriends = filterFriends;
 window.filterPendingRequests = filterPendingRequests;
 window.switchTab = switchTab;
+
+// --- SHARED APPLICATIONS: IMPLEMENTED FUNCTIONS ---
+function filterApplications() {
+  // Get filter values
+  const search = document.getElementById('job-search')?.value.trim().toLowerCase() || '';
+  const jobType = document.getElementById('job-type-filter')?.value.trim().toLowerCase() || '';
+  const friend = document.getElementById('friend-filter')?.value.trim().toLowerCase() || '';
+
+  // Filter both active and archived lists
+  ['active-applications', 'archived-applications'].forEach(listId => {
+    const appList = document.querySelector(`#${listId} ul`);
+    if (!appList) return;
+    appList.querySelectorAll('.app-item').forEach(item => {
+      const title = item.getAttribute('data-title') || '';
+      const type = item.getAttribute('data-job-type') || '';
+      const sharedBy = item.getAttribute('data-friend') || '';
+      const matches =
+        (search === '' || title.includes(search)) &&
+        (jobType === '' || type === jobType) &&
+        (friend === '' || sharedBy === friend);
+      item.style.display = matches ? '' : 'none';
+    });
+  });
+}
+
+function saveApplication(appId) {
+  const btn = document.getElementById(`save-btn-${appId}`);
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
+
+  fetch(`/save-shared-application/${appId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Saved to your tracker';
+        btn.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-600', 'hover:from-green-600', 'hover:to-emerald-700');
+        btn.classList.add('bg-gray-100', 'text-gray-600', 'cursor-not-allowed');
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = 'Save to Tracker';
+        alert(data.error || 'Failed to save application.');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = 'Save to Tracker';
+      alert('Failed to save application. Please try again.');
+    });
+}
+
+window.filterApplications = filterApplications;
+window.saveApplication = saveApplication;
