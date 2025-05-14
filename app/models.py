@@ -1,6 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta, timezone
 import pytz
+# --- Flask-Login integration ---
+from flask_login import UserMixin
+from flask_login import LoginManager
 
 db = SQLAlchemy()
 
@@ -17,7 +20,7 @@ friendships = db.Table('friendships',
     db.Column('friend_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
 )
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -119,4 +122,10 @@ class Notification(db.Model):
     
     # Relationship to the user
     user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))
+
+# --- Flask-Login user loader ---
+# This function must be registered with the LoginManager instance in your app factory (see __init__.py)
+# It tells Flask-Login how to load a user from a user ID stored in the session.
+def load_user(user_id):
+    return User.query.get(int(user_id))
 

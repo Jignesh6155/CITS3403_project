@@ -21,6 +21,11 @@ import string
 from datetime import datetime, timedelta, timezone
 import pytz
 import re
+from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
+from flask import current_app
+
+
 # Simple in-memory rate limiting
 request_counts = {}
 def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
@@ -59,8 +64,8 @@ live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
 SCRAPE_SIZE = 3
 def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
-    print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-    from flask import current_app
+    if current_app.config.get('DEBUG', False):
+        print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
     with current_app.app_context():
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
         from app.models import db, ScrapedJob
@@ -70,9 +75,11 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
         import re
         
         try:
-            print(f"[DEBUG] Calling get_jobs_full with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
+            if current_app.config.get('DEBUG', False):
+                print(f"[DEBUG] Calling get_jobs_full with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
             jobs = get_jobs_full(jobtype=jobtype, discipline=discipline, location=location, keyword=keyword, max_pages=SCRAPE_SIZE, headless=HEADLESS_TOGGLE)
-            print(f"[DEBUG] Successfully scraped {len(jobs)} jobs")
+            if current_app.config.get('DEBUG', False):
+                print(f"[DEBUG] Successfully scraped {len(jobs)} jobs")
             
             # Clear existing jobs for this search
             ScrapedJob.query.filter_by(
@@ -123,7 +130,8 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                             closing_date = None  # Unknown format, leave as None
                     
                     # Save to DB
-                    print(f"[DEBUG] Saving job {i+1}/{len(jobs)} to database: {job.get('title')}")
+                    if current_app.config.get('DEBUG', False):
+                        print(f"[DEBUG] Saving job {i+1}/{len(jobs)} to database: {job.get('title')}")
                     scraped_job = ScrapedJob(
                         user_id=user_id,
                         title=job.get("title"),
@@ -146,7 +154,8 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                     )
                     db.session.add(scraped_job)
                     db.session.commit()
-                    print(f"[DEBUG] Successfully saved job to database: {job.get('title')}")
+                    if current_app.config.get('DEBUG', False):
+                        print(f"[DEBUG] Successfully saved job to database: {job.get('title')}")
                     
                     # Push to live queue with tags
                     about = job.get("about_company", [])
@@ -162,9 +171,11 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
                         'tag_jobtype': jobtype,
                         'tag_category': discipline
                     })
-                    print(f"[DEBUG] Added job to live queue: {job.get('title')}")
+                    if current_app.config.get('DEBUG', False):
+                        print(f"[DEBUG] Added job to live queue: {job.get('title')}")
                 except Exception as e:
-                    print(f"[ERROR] Error saving job to DB: {e}")
+                    if current_app.config.get('DEBUG', False):
+                        print(f"[ERROR] Error saving job to DB: {e}")
                     db.session.rollback()
                     import traceback
                     traceback.print_exc()
@@ -181,7 +192,8 @@ def background_scraper(user_id=1, jobtype='internships', discipline=None, locati
             live_job_queue.put({
                 'status': 'complete'
             })
-            print(f"[DEBUG] Scraping complete, sent completion message to queue")
+            if current_app.config.get('DEBUG', False):
+                print(f"[DEBUG] Scraping complete, sent completion message to queue")
 def job_matches(job, search, location, job_type, category, confidence=0.35):
     """Check if a job matches the search criteria"""
     if not job:
@@ -238,33 +250,37 @@ def signup():
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             return render_template("index.html", error="Email already registered.")
-        new_user = User(name=name, email=email, password=password)
+        # Hash the password before storing it in the database
+        hashed_password = generate_password_hash(password)
+        new_user = User(name=name, email=email, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
-        session["name"] = name
+        login_user(new_user)
         return redirect(url_for("main.dashboard"))
     return render_template("index.html", error="All fields are required.")
 
-@main_bp.route("/signin", methods=["POST"])
+@main_bp.route("/signin", methods=["GET", "POST"])
 def signin():
+    if request.method == "GET":
+        # Render the login page for GET requests (Flask-Login redirects here if not authenticated)
+        return render_template("index.html")  # Change to your login template if different
+    # POST: handle login form submission
     email = request.form.get("email")
     password = request.form.get("password")
     if email and password:
-        user = User.query.filter_by(email=email, password=password).first()
-        if user:
-            session["name"] = user.name
+        user = User.query.filter_by(email=email).first()
+        # Check the password hash
+        if user and check_password_hash(user.password, password):
+            login_user(user)
             return redirect(url_for("main.dashboard"))
         else:
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
 
 @main_bp.route("/dashboard")
+@login_required  # Require login for dashboard
 def dashboard():
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return redirect(url_for('main.home'))
+    user = current_user
     applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
     status_counts_dict = {status: 0 for status in all_statuses}
@@ -371,16 +387,13 @@ def dashboard():
 
 @main_bp.route("/logout")
 def logout():
-    session.clear()
+    logout_user()
     return redirect(url_for("main.home"))
 
 @main_bp.route("/job-search")
+@login_required  # Require login for job search
 def job_search():
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return redirect(url_for('main.home'))
+    user = current_user
     scraped_jobs = ScrapedJob.query.all()
     for job in scraped_jobs:
         try:
@@ -393,13 +406,9 @@ def job_search():
     return render_template("jobSearch.html", active_page="job-search", scraped_jobs=scraped_jobs, resume_keywords=resume_keywords, suggested_jobs=suggested_jobs)
 
 @main_bp.route("/analytics")
+@login_required  # Require login for analytics
 def analytics():
-    # --- auth guard -------------------------------------------------------
-    if "name" not in session:
-        return redirect(url_for("main.home"))
-    user = User.query.filter_by(name=session["name"]).first()
-    if not user:
-        return redirect(url_for("main.home"))
+    user = current_user
     # --- grab all of this user's applications ----------------------------
     applications = JobApplication.query.filter_by(user=user).all()
     total_apps   = len(applications)
@@ -515,13 +524,9 @@ def toggle_favorite(friend_id):
         return jsonify({"error": str(e)}), 500
 
 @main_bp.route("/comms")
+@login_required  # Require login for friends/comms
 def comms():
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return redirect(url_for('main.home'))
-    
+    user = current_user
     # Get all JobApplications where the current user is in shared_with
     shared_apps = JobApplication.query \
         .filter(JobApplication.shared_with.any(id=user.id)) \
@@ -582,7 +587,8 @@ def comms():
 def upload():
     f = request.files.get("resume")
     if f and f.filename:
-        print("[DEBUG] Processing uploaded resume with AI")
+        if current_app.config.get('DEBUG', False):
+            print("[DEBUG] Processing uploaded resume with AI")
         filename = f.filename
         content_type = f.content_type or f.mimetype or ''
         file_bytes = f.read()
@@ -590,12 +596,14 @@ def upload():
         # Get AI-suggested job titles (keywords)
         job_titles = resume_processor.extract_keywords_openai(text)
         job_titles = [kw.strip().strip(string.punctuation) for kw in job_titles if kw.strip()]
-        print("[DEBUG] Extracted keywords:", job_titles)
+        if current_app.config.get('DEBUG', False):
+            print("[DEBUG] Extracted keywords:", job_titles)
         # Find up to 5 jobs that fuzzy match any keyword
         from app.models import ScrapedJob
         import json
         all_jobs = ScrapedJob.query.all()
-        print("[DEBUG] Number of jobs in DB:", len(all_jobs))
+        if current_app.config.get('DEBUG', False):
+            print("[DEBUG] Number of jobs in DB:", len(all_jobs))
         suggestions = []
         for job in all_jobs:
             for keyword in job_titles:
@@ -693,7 +701,8 @@ def api_start_scraping():
             return jsonify({"error": "User not found"}), 404
             
         data = request.get_json(force=True) or {}
-        print("[DEBUG] Received scraping parameters:", data)
+        if current_app.config.get('DEBUG', False):
+            print("[DEBUG] Received scraping parameters:", data)
         
         jobtype = data.get('jobtype', 'internships')
         discipline = data.get('discipline') or None
@@ -704,9 +713,11 @@ def api_start_scraping():
         if not rate_limit_check(user.id, 'scraping'):
             return jsonify({"error": "Rate limit exceeded. Please wait before starting another search."}), 429
         
-        print(f"[DEBUG] Starting background scraper thread with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
+        if current_app.config.get('DEBUG', False):
+            print(f"[DEBUG] Starting background scraper thread with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
         threading.Thread(target=background_scraper, args=(user.id, jobtype, discipline, location, keyword), daemon=True).start()
-        print("[DEBUG] Background scraper thread started")
+        if current_app.config.get('DEBUG', False):
+            print("[DEBUG] Background scraper thread started")
         return '', 202
     except Exception as e:
         print(f"[ERROR] Error in /api/start-scraping endpoint: {e}")
@@ -963,13 +974,9 @@ def update_job_status():
     return jsonify({"message": "Status updated"})
 
 @main_bp.route('/job-tracker')
+@login_required  # Require login for job tracker
 def job_tracker():
-    if 'name' not in session:
-        return redirect(url_for('main.home'))
-    
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return redirect(url_for('main.home'))
+    user = current_user
     # Only applications owned by the current user
     applications = JobApplication.query.filter_by(user=user).all()
     statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
@@ -1198,27 +1205,20 @@ def update_name():
 def update_password():
     if 'name' not in session:
         return jsonify({"success": False, "message": "Not logged in"}), 401
-        
     user = User.query.filter_by(name=session['name']).first()
     if not user:
         return jsonify({"success": False, "message": "User not found"}), 404
-        
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
-    
     if not current_password or not new_password:
         return jsonify({"success": False, "message": "All fields are required"}), 400
-        
-    if user.password != current_password:
+    # Check the current password hash
+    if not check_password_hash(user.password, current_password):
         return jsonify({"success": False, "message": "Current password is incorrect"}), 400
-        
-    # Update user's password
-    user.password = new_password
-    
+    # Hash the new password before storing
+    user.password = generate_password_hash(new_password)
     try:
         db.session.commit()
-        
-        # Create notification
         notification = Notification(
             user_id=user.id,
             content="Your password has been updated successfully",
@@ -1227,7 +1227,6 @@ def update_password():
         )
         db.session.add(notification)
         db.session.commit()
-        
         return jsonify({
             "success": True, 
             "message": "Password updated successfully"

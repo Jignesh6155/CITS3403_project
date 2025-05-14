@@ -1,5 +1,5 @@
 class Config:
-    SECRET_KEY = 'your_secret_key'
+    SECRET_KEY = 'flask-login-key' # can also remove this and put it in a .env file
     SQLALCHEMY_DATABASE_URI = 'sqlite:///careerlink.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Add other default config options here

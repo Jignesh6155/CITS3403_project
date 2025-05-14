@@ -79,7 +79,7 @@
                     <span class="font-medium">{{ request.sender.name }}</span>
                   </div>
                   <div class="flex gap-2">
-                    <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                    <form action="{{ url_for('main.handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
                       <input type="hidden" name="action" value="accept">
                       <button type="submit" class="bg-green-500 text-white text-xs rounded-full px-3 py-1 hover:bg-green-600 transition-colors flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -88,7 +88,7 @@
                         Accept
                       </button>
                     </form>
-                    <form action="{{ url_for('handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
+                    <form action="{{ url_for('main.handle_friend_request', request_id=request.id) }}" method="POST" class="inline">
                       <input type="hidden" name="action" value="reject">
                       <button type="submit" class="bg-red-500 text-white text-xs rounded-full px-3 py-1 hover:bg-red-600 transition-colors flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

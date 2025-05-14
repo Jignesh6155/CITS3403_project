@@ -46,6 +46,10 @@ class TestRoutes(FlaskTestBase):
         response = self.client.get('/job-search', follow_redirects=True)
         self.assertIn(b'CareerLink', response.data)
 
+    def test_friend_requires_login(self):
+        response = self.client.get('/comms', follow_redirects=True) # TODO: we need to change this url to friends
+        self.assertIn(b'CareerLink', response.data)
+
     # Add more tests for other routes and API endpoints as needed
     # For example, test /api/scraped-jobs, /add-application, etc.
     # To test authenticated endpoints, set session['name'] as above.
