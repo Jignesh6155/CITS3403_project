@@ -51,101 +51,81 @@ function initFilterToggle() {
 /**
  * Initialize favorite functionality
  */
+/**
+ * Initialize favorite functionality
+ */
 function initFavoriteFunctionality() {
-  console.log("Initializing favorite functionality");
+  console.log("Initializing favorite functionality with simplified approach");
   
-  // Count buttons for debugging
+  // Get all the favorite buttons
   const favoriteButtons = document.querySelectorAll('.favorite-btn');
   console.log(`Found ${favoriteButtons.length} favorite buttons`);
   
-  // Setup favorite star buttons with more robust click handling
+  // Load favorites from localStorage
+  let favorites = JSON.parse(localStorage.getItem('favoriteFriends') || '{}');
+  
+  // Set up each button
   favoriteButtons.forEach(btn => {
+    const friendId = btn.getAttribute('data-friend-id');
+    
+    // Set initial state based on localStorage
+    if (favorites[friendId]) {
+      btn.classList.add('is-favorite');
+      btn.setAttribute('data-is-favorite', '1');
+      
+      // Also set on parent item
+      const friendItem = btn.closest('.friend-item');
+      if (friendItem) {
+        friendItem.setAttribute('data-is-favorite', '1');
+      }
+    }
+    
+    // Add click handler
     btn.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log("Star clicked!");
+      console.log("Star clicked for friend ID:", friendId);
       
-      const friendId = this.getAttribute('data-friend-id');
-      console.log(`Friend ID: ${friendId}`);
+      // Check current state
+      const isFavorite = btn.classList.contains('is-favorite');
+      console.log("Current state - is favorite:", isFavorite);
       
-      const starIcon = this.querySelector('svg');
-      const isFavorite = this.getAttribute('data-is-favorite') === '1';
-      console.log(`Current favorite status: ${isFavorite ? 'true' : 'false'}`);
-      
-      // Optimistic UI update
+      // Toggle state
       if (isFavorite) {
-        starIcon.classList.remove('text-yellow-500', 'fill-yellow-500');
-        this.setAttribute('data-is-favorite', '0');
-      } else {
-        starIcon.classList.add('text-yellow-500', 'fill-yellow-500');
-        this.setAttribute('data-is-favorite', '1');
-      }
-      
-      // Update parent item's data attribute
-      const friendItem = this.closest('.friend-item');
-      if (friendItem) {
-        friendItem.setAttribute('data-is-favorite', isFavorite ? '0' : '1');
-      }
-      
-      // Update favorite status on server
-      fetch(`/toggle-favorite/${friendId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(response => {
-        console.log("Server response status:", response.status);
-        return response.json();
-      })
-      .then(data => {
-        console.log("Server response data:", data);
+        // Remove favorite
+        btn.classList.remove('is-favorite');
+        btn.setAttribute('data-is-favorite', '0');
         
-        if (!data.success) {
-          // Revert UI change if the server request failed
-          console.error('Failed to toggle favorite status:', data.error);
-          if (isFavorite) {
-            starIcon.classList.add('text-yellow-500', 'fill-yellow-500');
-            this.setAttribute('data-is-favorite', '1');
-            if (friendItem) friendItem.setAttribute('data-is-favorite', '1');
-          } else {
-            starIcon.classList.remove('text-yellow-500', 'fill-yellow-500');
-            this.setAttribute('data-is-favorite', '0');
-            if (friendItem) friendItem.setAttribute('data-is-favorite', '0');
-          }
-        } else {
-          // Store favorites in localStorage for faster filtering
-          const friendName = friendItem ? friendItem.getAttribute('data-name') : '';
-          
-          let favorites = JSON.parse(localStorage.getItem('favoriteFriends') || '{}');
-          if (!isFavorite) { // It's now a favorite
-            favorites[friendId] = friendName;
-          } else {
-            delete favorites[friendId];
-          }
-          
-          localStorage.setItem('favoriteFriends', JSON.stringify(favorites));
-          
-          // Re-apply filters to reflect changes
-          if (typeof filterFriends === 'function') {
-            filterFriends();
-          } else {
-            console.error("filterFriends function is not defined");
-          }
+        // Update parent item
+        const friendItem = btn.closest('.friend-item');
+        if (friendItem) {
+          friendItem.setAttribute('data-is-favorite', '0');
         }
-      })
-      .catch(error => {
-        console.error('Error toggling favorite status:', error);
-        // Revert UI change on error
-        if (isFavorite) {
-          starIcon.classList.add('text-yellow-500', 'fill-yellow-500');
-          this.setAttribute('data-is-favorite', '1');
-          if (friendItem) friendItem.setAttribute('data-is-favorite', '1');
-        } else {
-          starIcon.classList.remove('text-yellow-500', 'fill-yellow-500');
-          this.setAttribute('data-is-favorite', '0');
-          if (friendItem) friendItem.setAttribute('data-is-favorite', '0');
+        
+        // Remove from localStorage
+        delete favorites[friendId];
+      } else {
+        // Add favorite
+        btn.classList.add('is-favorite');
+        btn.setAttribute('data-is-favorite', '1');
+        
+        // Update parent item
+        const friendItem = btn.closest('.friend-item');
+        if (friendItem) {
+          friendItem.setAttribute('data-is-favorite', '1');
+          favorites[friendId] = friendItem.getAttribute('data-name') || '';
         }
-      });
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('favoriteFriends', JSON.stringify(favorites));
+      console.log("Updated favorites:", favorites);
+      
+      // Re-apply filters if we're on the favorites filter
+      if (window.currentFilter === 'favourites') {
+        filterFriends();
+      }
     });
   });
 }
@@ -219,7 +199,13 @@ function initEnhancedFriendsList() {
     if (currentFilter !== 'all') {
       if (currentFilter === 'favourites') {
         filteredFriends = filteredFriends.filter(friend => {
-          return friend.getAttribute('data-is-favorite') === '1';
+
+          // Check both the data attribute and the button class
+          const isFavorite = friend.getAttribute('data-is-favorite') === '1';
+          const favoriteBtn = friend.querySelector('.favorite-btn');
+          const btnIsFavorite = favoriteBtn && favoriteBtn.classList.contains('is-favorite');
+    
+          return isFavorite || btnIsFavorite;
         });
       } else if (currentFilter === 'shared') {
         // Filter out friends with zero shared applications
@@ -540,25 +526,55 @@ window.switchTab = switchTab;
 
 // --- SHARED APPLICATIONS: IMPLEMENTED FUNCTIONS ---
 function filterApplications() {
+  console.log("Filtering applications...");
+  
   // Get filter values
   const search = document.getElementById('job-search')?.value.trim().toLowerCase() || '';
-  const jobType = document.getElementById('job-type-filter')?.value.trim().toLowerCase() || '';
+  const jobType = document.getElementById('job-type-filter')?.value || '';
   const friend = document.getElementById('friend-filter')?.value.trim().toLowerCase() || '';
+  
+  console.log(`Filter values - search: "${search}", jobType: "${jobType}", friend: "${friend}"`);
 
   // Filter both active and archived lists
   ['active-applications', 'archived-applications'].forEach(listId => {
     const appList = document.querySelector(`#${listId} ul`);
     if (!appList) return;
+    
+    let visibleCount = 0;
     appList.querySelectorAll('.app-item').forEach(item => {
+      // Get attribute values and log them for debugging
       const title = item.getAttribute('data-title') || '';
-      const type = item.getAttribute('data-job-type') || '';
+      const type = (item.getAttribute('data-job-type') || '').toLowerCase();
       const sharedBy = item.getAttribute('data-friend') || '';
+      
+      console.log(`Item - title: "${title}", type: "${type}", sharedBy: "${sharedBy}"`);
+      
+      // Improved matching logic with case-insensitive comparison for job type
+      const jobTypeMatch = !jobType || 
+                           type.includes(jobType.toLowerCase()) || 
+                           jobType.toLowerCase().includes(type);
+      
       const matches =
         (search === '' || title.includes(search)) &&
-        (jobType === '' || type === jobType) &&
-        (friend === '' || sharedBy === friend);
+        jobTypeMatch &&
+        (friend === '' || sharedBy.includes(friend));
+      
       item.style.display = matches ? '' : 'none';
+      if (matches) visibleCount++;
     });
+    
+    console.log(`${listId} - visible items: ${visibleCount}`);
+    
+    // Show/hide empty message based on results
+    const emptyMessage = document.querySelector(`#${listId} .empty-message`);
+    if (emptyMessage) {
+      if (visibleCount === 0) {
+        emptyMessage.style.display = '';
+        emptyMessage.textContent = 'No matching applications found';
+      } else {
+        emptyMessage.style.display = 'none';
+      }
+    }
   });
 }
 
@@ -568,11 +584,26 @@ function saveApplication(appId) {
   btn.disabled = true;
   btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
 
+  // Get CSRF token from meta tag
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
   fetch(`/save-shared-application/${appId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken  // Include CSRF token in headers
+    },
+    body: JSON.stringify({ csrf_token: csrfToken }) // Include it in body too
   })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(data => {
+          throw new Error(data.error || 'Failed to save application');
+        });
+      }
+      return response.json();
+    })
     .then(data => {
       if (data.success) {
         btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Saved to your tracker';
@@ -584,12 +615,49 @@ function saveApplication(appId) {
         alert(data.error || 'Failed to save application.');
       }
     })
-    .catch(() => {
+    .catch(error => {
+      console.error('Error:', error);
       btn.disabled = false;
       btn.innerHTML = 'Save to Tracker';
-      alert('Failed to save application. Please try again.');
+      alert(error.message || 'Failed to save application. Please try again.');
     });
 }
 
+function resetFilters() {
+  // Reset the search input
+  const searchInput = document.getElementById('job-search');
+  if (searchInput) searchInput.value = '';
+  
+  // Reset the filter dropdowns
+  const typeFilter = document.getElementById('job-type-filter');
+  if (typeFilter) typeFilter.value = '';
+  
+  const friendFilter = document.getElementById('friend-filter');
+  if (friendFilter) friendFilter.value = '';
+  
+  // Apply the reset filters
+  filterApplications();
+}
+
+// Add this at the end of your comms.js file
+console.log("===== COMMS.JS LOADED =====");
+// Debug helper - can be called from browser console
+window.debugFavorites = function() {
+  const favoriteButtons = document.querySelectorAll('.favorite-btn');
+  console.log(`Found ${favoriteButtons.length} favorite buttons`);
+  
+  favoriteButtons.forEach(btn => {
+    const friendId = btn.getAttribute('data-friend-id');
+    const isFavorite = btn.classList.contains('is-favorite');
+    const dataAttr = btn.getAttribute('data-is-favorite');
+    
+    console.log(`Friend ID: ${friendId}, Button class: ${isFavorite ? 'is-favorite' : 'not-favorite'}, Data attribute: ${dataAttr}`);
+  });
+  
+  const favoritesInStorage = localStorage.getItem('favoriteFriends');
+  console.log("Favorites in localStorage:", favoritesInStorage);
+};
+
+window.resetFilters = resetFilters;
 window.filterApplications = filterApplications;
 window.saveApplication = saveApplication;
