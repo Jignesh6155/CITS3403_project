@@ -10,16 +10,18 @@ python3 -m unittest tests/test_system.py
 
 
 Like we need tests for:
-Navigating between all pages
-Add editing and moving around applications
+Navigating between all pages <--
+Add editing and moving around applications/Saving applications <--
 - Create a new user, log in 
 - Create an application
 - Edit an application and change the 'status' field to something else
 - Reload the site (re navigate to jobTracker) 
 - Check whether the new application is displaying the edited changes 
 -> Therefore database is consistent + edit/create application forms works
-Saving applications
-Web scraper (ill do this)
+
+Web scraper (ill do this) <-- Adriaan
+
+Once Rishi has fixed all of it:
 Accepting friends requests 
 Sending friends requests 
 Sharing request with friends 
