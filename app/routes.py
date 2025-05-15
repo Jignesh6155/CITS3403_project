@@ -256,6 +256,8 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
         login_user(new_user)
+        session['email'] = new_user.email
+        session['name'] = new_user.name
         return redirect(url_for("main.dashboard"))
     return render_template("index.html", error="All fields are required.")
 
@@ -272,6 +274,8 @@ def signin():
         # Check the password hash
         if user and check_password_hash(user.password, password):
             login_user(user)
+            session['email'] = user.email
+            session['name'] = user.name
             return redirect(url_for("main.dashboard"))
         else:
             return render_template("index.html", error="Invalid Email or Password.")
@@ -486,134 +490,73 @@ def analytics():
         cum_counts  = cum_counts,
     )
 
-@main_bp.route('/toggle-favorite/<int:friend_id>', methods=['POST'])
-@login_required
-def toggle_favorite(friend_id):
-    # Get the CSRF token from the request
-    csrf_token = request.headers.get('X-CSRFToken')
-    
-    if not csrf_token:
-        return jsonify({"success": False, "error": "CSRF token missing"}), 400
-    
-    friend = User.query.get(friend_id)
-    if not friend:
-        return jsonify({"success": False, "error": "Friend not found"}), 404
-        
-    # Check if this is actually a friend
-    if friend not in current_user.friends.all():
-        return jsonify({"success": False, "error": "Not friends with this user"}), 403
-    
-    try:
-        # For this implementation, we'll use a simple mechanism
-        # You could add a FavoriteFriend model instead for a more robust solution
-        
-        # Check if a FavoriteFriend row already exists
-        from app.models import db, FavoriteFriend
-        
-        # Check if FavoriteFriend model exists, if not, create it
-        if not hasattr(db.Model, 'FavoriteFriend'):
-            class FavoriteFriend(db.Model):
-                __tablename__ = 'favorite_friends'
-                user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
-                friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
-            
-            # Add relationship to User model
-            User.favorite_friends = db.relationship('FavoriteFriend',
-                                              foreign_keys=[FavoriteFriend.user_id],
-                                              backref=db.backref('user', lazy='joined'),
-                                              lazy='dynamic',
-                                              cascade='all, delete-orphan')
-            
-            # Create the table
-            db.create_all()
-        
-        existing = FavoriteFriend.query.filter_by(
-            user_id=current_user.id, 
-            friend_id=friend_id
-        ).first()
-        
-        is_favorite = False
-        
-        if existing:
-            # Remove favorite
-            db.session.delete(existing)
-            db.session.commit()
-        else:
-            # Add favorite
-            favorite = FavoriteFriend(user_id=current_user.id, friend_id=friend_id)
-            db.session.add(favorite)
-            db.session.commit()
-            is_favorite = True
-        
-        return jsonify({
-            "success": True, 
-            "is_favorite": is_favorite
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in toggle_favorite: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    
 @main_bp.route("/comms")
-@login_required  # Require login for friends/comms
+@login_required
 def comms():
-    user = current_user
-    # Get all JobApplications where the current user is in shared_with
-    shared_apps = JobApplication.query \
-        .filter(JobApplication.shared_with.any(id=user.id)) \
-        .all()
+    # Get all friends
+    friends = current_user.friends.all()
     
-    # Get app statuses using raw SQL with proper text() wrapper
-    app_statuses = {}
-    for app in shared_apps:
-        # Parameterized query: safe from SQL injection
-        result = db.session.execute(
-            text("SELECT status FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
-            {"user_id": user.id, "app_id": app.id}
-        ).fetchone()
-        
-        # Default to 'active' if no status found
-        status = result[0] if result else 'active'
-        app_statuses[app.id] = status
-    
-    # Get pending friend requests
-    pending_requests = FriendRequest.query.filter_by(
-        receiver_id=user.id, status='pending'
-    ).all()
-    
-    # Get the current user's friends
-    user_friends = user.friends.all()
-    
-    # Get friend request records for "recent" sorting
+    # Get friend requests for recent sorting
     friend_requests = {}
-    for friend in user_friends:
+    for friend in friends:
         request = FriendRequest.query.filter(
-            ((FriendRequest.sender_id == user.id) & (FriendRequest.receiver_id == friend.id)) |
-            ((FriendRequest.sender_id == friend.id) & (FriendRequest.receiver_id == user.id))
+            ((FriendRequest.sender_id == current_user.id) & (FriendRequest.receiver_id == friend.id)) |
+            ((FriendRequest.sender_id == friend.id) & (FriendRequest.receiver_id == current_user.id))
         ).order_by(FriendRequest.updated_at.desc()).first()
-        
         if request:
             friend_requests[friend.id] = request
     
-    # Count shared apps per friend
+    # Get shared apps count and status for sorting
     shared_apps_count = {}
-    for friend in user_friends:
-        count = JobApplication.query.filter_by(user_id=friend.id) \
-            .filter(JobApplication.shared_with.any(id=user.id)) \
-            .count()
+    shared_apps = []
+    app_statuses = {}
+    
+    # Get applications shared with current user
+    shared_with_user = db.session.query(JobApplication, application_shares.c.status).join(
+        application_shares,
+        JobApplication.id == application_shares.c.job_application_id
+    ).filter(
+        application_shares.c.user_id == current_user.id
+    ).all()
+    
+    for app, status in shared_with_user:
+        shared_apps.append(app)
+        app_statuses[app.id] = status
+    
+    # Get applications shared by current user
+    shared_by_user = db.session.query(JobApplication, application_shares.c.status).join(
+        application_shares,
+        JobApplication.id == application_shares.c.job_application_id
+    ).filter(
+        JobApplication.user_id == current_user.id
+    ).all()
+    
+    for app, status in shared_by_user:
+        if app not in shared_apps:
+            shared_apps.append(app)
+            app_statuses[app.id] = status
+    
+    # Count shared apps per friend
+    for friend in friends:
+        count = db.session.query(application_shares).filter(
+            ((application_shares.c.user_id == current_user.id) & (application_shares.c.job_application_id.in_(
+                db.session.query(JobApplication.id).filter_by(user_id=friend.id)
+            ))) |
+            ((application_shares.c.user_id == friend.id) & (application_shares.c.job_application_id.in_(
+                db.session.query(JobApplication.id).filter_by(user_id=current_user.id)
+            )))
+        ).count()
         shared_apps_count[friend.id] = count
     
     return render_template(
-        "comms.html",
+        'comms.html',
         active_page="comms",
-        user=user,
-        current_user=user,
+        user=current_user,
+        friends=friends,
+        friend_requests=friend_requests,
+        shared_apps_count=shared_apps_count,
         shared_apps=shared_apps,
-        app_statuses=app_statuses,
-        pending_requests=pending_requests,
-        friend_requests=friend_requests,  # Pass friend requests for sorting by recent
-        shared_apps_count=shared_apps_count  # Pass shared apps count for sorting
+        app_statuses=app_statuses
     )
 
 @main_bp.route("/upload", methods=["POST"])
@@ -1021,17 +964,20 @@ def share_application(app_id):
         
     friend = User.query.get(friend_id)
     if friend and friend in user.friends:
-        if application not in friend.shared_applications:
-            # Add to shared_applications relationship
-            friend.shared_applications.append(application)
-            
-            # Explicitly set status to 'active' in the association table
-            db.session.flush()  # Ensure the relationship is in the database
-            
-            # Set the status to 'active' in the association table
+        # Check if already shared
+        existing_share = db.session.query(application_shares).filter_by(
+            user_id=friend.id,
+            job_application_id=application.id
+        ).first()
+        
+        if not existing_share:
+            # Insert new share with active status
             db.session.execute(
-                text("UPDATE application_shares SET status = 'active' WHERE user_id = :user_id AND job_application_id = :app_id"),
-                {"user_id": friend.id, "app_id": application.id}
+                application_shares.insert().values(
+                    user_id=friend.id,
+                    job_application_id=application.id,
+                    status='active'
+                )
             )
             
             db.session.commit()
@@ -1044,10 +990,20 @@ def share_application(app_id):
             )
             flash(f'Application shared with {friend.name}', 'success')
         else:
-            flash('Application already shared with this friend', 'error')
+            # Update existing share to active if it was archived
+            if existing_share.status == 'archived':
+                db.session.execute(
+                    text("UPDATE application_shares SET status = 'active' WHERE user_id = :user_id AND job_application_id = :app_id"),
+                    {"user_id": friend.id, "app_id": application.id}
+                )
+                db.session.commit()
+                flash(f'Application re-shared with {friend.name}', 'success')
+            else:
+                flash('Application already shared with this friend', 'error')
     else:
         flash('Friend not found', 'error')
     return redirect(url_for('main.job_tracker'))
+
 @main_bp.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
@@ -1228,28 +1184,17 @@ def update_application(job_id):
         return jsonify({"error": str(e)}), 500
     
 @main_bp.route('/update-name', methods=['POST'])
+@login_required
 def update_name():
-    if 'name' not in session:
-        return jsonify({"success": False, "message": "Not logged in"}), 401
-        
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return jsonify({"success": False, "message": "User not found"}), 404
-        
+    user = current_user
     new_name = request.form.get('new_name')
     if not new_name:
         return jsonify({"success": False, "message": "New name is required"}), 400
-        
-    # Update user's name
     old_name = user.name
     user.name = new_name
-    
     try:
         db.session.commit()
-        # Update session
         session['name'] = new_name
-        
-        # Create notification
         notification = Notification(
             user_id=user.id,
             content=f"Your name has been updated from {old_name} to {new_name}",
@@ -1258,9 +1203,8 @@ def update_name():
         )
         db.session.add(notification)
         db.session.commit()
-        
         return jsonify({
-            "success": True, 
+            "success": True,
             "message": "Name updated successfully",
             "refresh": True
         })
@@ -1269,20 +1213,15 @@ def update_name():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @main_bp.route('/update-password', methods=['POST'])
+@login_required
 def update_password():
-    if 'name' not in session:
-        return jsonify({"success": False, "message": "Not logged in"}), 401
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return jsonify({"success": False, "message": "User not found"}), 404
+    user = current_user
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     if not current_password or not new_password:
         return jsonify({"success": False, "message": "All fields are required"}), 400
-    # Check the current password hash
     if not check_password_hash(user.password, current_password):
         return jsonify({"success": False, "message": "Current password is incorrect"}), 400
-    # Hash the new password before storing
     user.password = generate_password_hash(new_password)
     try:
         db.session.commit()
@@ -1295,7 +1234,7 @@ def update_password():
         db.session.add(notification)
         db.session.commit()
         return jsonify({
-            "success": True, 
+            "success": True,
             "message": "Password updated successfully"
         })
     except Exception as e:

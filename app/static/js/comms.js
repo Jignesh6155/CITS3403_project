@@ -10,14 +10,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize enhanced friends list with alphabetical indexing and pagination
   initEnhancedFriendsList();
   
+  // Initialize favorite functionality
+  initFavoriteFunctionality();
+  
   // Tab switching for shared applications
   initTabSwitching();
   
   // Share modal functionality
   initShareModal();
-  
-  // Initialize favorite functionality
-  initFavoriteFunctionality();
 });
 
 /**
@@ -38,7 +38,7 @@ function initFilterToggle() {
     
     if (expanded) {
       // Expand the filter content
-      filterContent.style.maxHeight = '500px';
+      filterContent.style.maxHeight = 'none'; // Let content determine height
       filterChevron.classList.remove('rotate-180');
     } else {
       // Collapse the filter content
@@ -51,11 +51,8 @@ function initFilterToggle() {
 /**
  * Initialize favorite functionality
  */
-/**
- * Initialize favorite functionality
- */
 function initFavoriteFunctionality() {
-  console.log("Initializing favorite functionality with simplified approach");
+  console.log("Initializing favorite functionality");
   
   // Get all the favorite buttons
   const favoriteButtons = document.querySelectorAll('.favorite-btn');
@@ -67,17 +64,21 @@ function initFavoriteFunctionality() {
   // Set up each button
   favoriteButtons.forEach(btn => {
     const friendId = btn.getAttribute('data-friend-id');
+    const starIcon = btn.querySelector('.star-icon');
     
     // Set initial state based on localStorage
     if (favorites[friendId]) {
       btn.classList.add('is-favorite');
       btn.setAttribute('data-is-favorite', '1');
+      starIcon.classList.add('text-yellow-500', 'fill-yellow-500');
       
       // Also set on parent item
       const friendItem = btn.closest('.friend-item');
       if (friendItem) {
         friendItem.setAttribute('data-is-favorite', '1');
       }
+    } else {
+      starIcon.classList.add('text-gray-400');
     }
     
     // Add click handler
@@ -96,6 +97,8 @@ function initFavoriteFunctionality() {
         // Remove favorite
         btn.classList.remove('is-favorite');
         btn.setAttribute('data-is-favorite', '0');
+        starIcon.classList.remove('text-yellow-500', 'fill-yellow-500');
+        starIcon.classList.add('text-gray-400');
         
         // Update parent item
         const friendItem = btn.closest('.friend-item');
@@ -109,6 +112,8 @@ function initFavoriteFunctionality() {
         // Add favorite
         btn.classList.add('is-favorite');
         btn.setAttribute('data-is-favorite', '1');
+        starIcon.classList.remove('text-gray-400');
+        starIcon.classList.add('text-yellow-500', 'fill-yellow-500');
         
         // Update parent item
         const friendItem = btn.closest('.friend-item');
@@ -195,51 +200,39 @@ function initEnhancedFriendsList() {
     // Always remove any existing shared count badges
     document.querySelectorAll('.shared-count-badge').forEach(badge => badge.remove());
     
-    // Apply special filters (favorites, recent, most shared)
+    // Apply special filters (favorites, shared)
     if (currentFilter !== 'all') {
       if (currentFilter === 'favourites') {
         filteredFriends = filteredFriends.filter(friend => {
-
-          // Check both the data attribute and the button class
-          const isFavorite = friend.getAttribute('data-is-favorite') === '1';
-          const favoriteBtn = friend.querySelector('.favorite-btn');
-          const btnIsFavorite = favoriteBtn && favoriteBtn.classList.contains('is-favorite');
-    
-          return isFavorite || btnIsFavorite;
+          const friendId = friend.querySelector('.favorite-btn')?.getAttribute('data-friend-id');
+          const favorites = JSON.parse(localStorage.getItem('favoriteFriends') || '{}');
+          return favorites[friendId];
         });
       } else if (currentFilter === 'shared') {
         // Filter out friends with zero shared applications
         filteredFriends = filteredFriends.filter(friend => {
           const count = parseInt(friend.getAttribute('data-shared-count') || '0');
-          return count > 0; // Only include friends with at least 1 shared application
+          return count > 0;
         });
         
-        // Then sort the remaining friends by shared count (most first)
+        // Sort by shared count (most first)
         filteredFriends.sort((a, b) => {
           const countA = parseInt(a.getAttribute('data-shared-count') || '0');
           const countB = parseInt(b.getAttribute('data-shared-count') || '0');
-          return countB - countA; // Descending order
+          return countB - countA;
         });
         
-        // Add count badges ONLY in shared filter mode
+        // Add count badges
         filteredFriends.forEach(friend => {
           const countBadge = document.createElement('span');
           const count = friend.getAttribute('data-shared-count') || '0';
           countBadge.className = 'inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full ml-1 shared-count-badge';
           countBadge.textContent = `${count} shared`;
           
-          // Find the name element and add the badge after it
           const nameElement = friend.querySelector('.font-medium');
           if (nameElement) {
             nameElement.appendChild(countBadge);
           }
-        });
-      } else if (currentFilter === 'recent') {
-        // Sort by most recent first
-        filteredFriends.sort((a, b) => {
-          const dateA = a.getAttribute('data-last-updated') || '0';
-          const dateB = b.getAttribute('data-last-updated') || '0';
-          return dateB.localeCompare(dateA);
         });
       }
     }
@@ -260,11 +253,9 @@ function initEnhancedFriendsList() {
               ? `No friends starting with "${currentLetter}"` 
               : (currentFilter === 'favourites'
                   ? 'No favorite friends yet'
-                  : (currentFilter === 'recent'
-                      ? 'No recent friends'
-                      : (currentFilter === 'shared'
-                          ? 'No shared applications yet'
-                          : 'No friends yet'))));
+                  : (currentFilter === 'shared'
+                      ? 'No shared applications yet'
+                      : 'No friends yet')));
       }
     } else if (noFriendsMessage) {
       noFriendsMessage.style.display = 'none';
@@ -399,56 +390,49 @@ function initEnhancedFriendsList() {
     filterFriends();
   });
   
-      // Helper function to get currently filtered friends
-    function getFilteredFriends() {
-        let filteredFriends = allFriends;
+  // Helper function to get currently filtered friends
+  function getFilteredFriends() {
+    let filteredFriends = allFriends;
+    
+    // Apply letter filter
+    if (currentLetter !== 'all') {
+      filteredFriends = filteredFriends.filter(friend => {
+        return friend.getAttribute('data-first-letter') === currentLetter;
+      });
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredFriends = filteredFriends.filter(friend => {
+        const name = friend.getAttribute('data-name');
+        return name.includes(searchTerm.toLowerCase());
+      });
+    }
+    
+    // Apply special filters (favorites, shared)
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'favourites') {
+        filteredFriends = filteredFriends.filter(friend => {
+          return friend.getAttribute('data-is-favorite') === '1';
+        });
+      } else if (currentFilter === 'shared') {
+        // Sort by shared apps count
+        filteredFriends.sort((a, b) => {
+          const countA = parseInt(a.getAttribute('data-shared-count') || '0');
+          const countB = parseInt(b.getAttribute('data-shared-count') || '0');
+          return countB - countA;
+        });
         
-        // Apply letter filter
-        if (currentLetter !== 'all') {
-          filteredFriends = filteredFriends.filter(friend => {
-            return friend.getAttribute('data-first-letter') === currentLetter;
-          });
-        }
-        
-        // Apply search filter
-        if (searchTerm) {
-          filteredFriends = filteredFriends.filter(friend => {
-            const name = friend.getAttribute('data-name');
-            return name.includes(searchTerm.toLowerCase());
-          });
-        }
-        
-        // Apply special filters (favorites, recent, most shared)
-        if (currentFilter !== 'all') {
-          if (currentFilter === 'favourites') {
-            filteredFriends = filteredFriends.filter(friend => {
-              return friend.getAttribute('data-is-favorite') === '1';
-            });
-          } else if (currentFilter === 'recent') {
-            // Sort by most recent first
-            filteredFriends.sort((a, b) => {
-              const dateA = a.getAttribute('data-last-updated') || '0';
-              const dateB = b.getAttribute('data-last-updated') || '0';
-              return dateB.localeCompare(dateA);
-            });
-          } else if (currentFilter === 'shared') {
-            // Sort by shared apps count
-            filteredFriends.sort((a, b) => {
-              const countA = parseInt(a.getAttribute('data-shared-count') || '0');
-              const countB = parseInt(b.getAttribute('data-shared-count') || '0');
-              return countB - countA;
-            });
-            
-            // Filter out friends with zero shared applications
-            filteredFriends = filteredFriends.filter(friend => {
-              const count = parseInt(friend.getAttribute('data-shared-count') || '0');
-              return count > 0; // Only include friends with at least 1 shared application
-            });
-          }
-        }
-        
-        return filteredFriends;
+        // Filter out friends with zero shared applications
+        filteredFriends = filteredFriends.filter(friend => {
+          const count = parseInt(friend.getAttribute('data-shared-count') || '0');
+          return count > 0; // Only include friends with at least 1 shared application
+        });
       }
+    }
+    
+    return filteredFriends;
+  }
   
   // Initialize the view
   filterFriends();
@@ -500,22 +484,31 @@ function initTabSwitching() {
  * @param {string} tabName - Tab to switch to ('active' or 'archived')
  */
 function switchTab(tabName) {
-  // Update tab buttons
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('border-b-2', 'border-indigo-500', 'text-indigo-600', 'font-medium');
-    btn.classList.add('text-gray-600', 'hover:text-gray-800');
-  });
-  
-  document.getElementById(`${tabName}-tab`).classList.remove('text-gray-600', 'hover:text-gray-800');
-  document.getElementById(`${tabName}-tab`).classList.add('border-b-2', 'border-indigo-500', 'text-indigo-600', 'font-medium');
-  
-  // Hide all tab content and show the selected one
+  // Hide all tab contents
   document.querySelectorAll('.tab-content').forEach(content => {
     content.classList.add('hidden');
   });
-  document.getElementById(`${tabName}-applications`).classList.remove('hidden');
   
-  // Run filtering on the visible tab
+  // Remove active state from all tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('bg-white', 'text-blue-700', 'font-medium', 'shadow-sm');
+    btn.classList.add('text-gray-700', 'hover:bg-gray-50');
+  });
+  
+  // Show selected tab content
+  const selectedContent = document.getElementById(`${tabName}-applications`);
+  if (selectedContent) {
+    selectedContent.classList.remove('hidden');
+  }
+  
+  // Set active state on selected tab
+  const selectedTab = document.getElementById(`${tabName}-tab`);
+  if (selectedTab) {
+    selectedTab.classList.remove('text-gray-700', 'hover:bg-gray-50');
+    selectedTab.classList.add('bg-white', 'text-blue-700', 'font-medium', 'shadow-sm');
+  }
+  
+  // Re-apply filters to the newly visible tab
   filterApplications();
 }
 
@@ -568,59 +561,57 @@ function filterApplications() {
     // Show/hide empty message based on results
     const emptyMessage = document.querySelector(`#${listId} .empty-message`);
     if (emptyMessage) {
-      if (visibleCount === 0) {
-        emptyMessage.style.display = '';
-        emptyMessage.textContent = 'No matching applications found';
-      } else {
-        emptyMessage.style.display = 'none';
-      }
+      emptyMessage.style.display = visibleCount === 0 ? '' : 'none';
     }
   });
 }
 
 function saveApplication(appId) {
-  const btn = document.getElementById(`save-btn-${appId}`);
-  if (!btn) return;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
-
-  // Get CSRF token from meta tag
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
+  
   fetch(`/save-shared-application/${appId}`, {
     method: 'POST',
     headers: {
-
       'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken  // Include CSRF token in headers
-    },
-    body: JSON.stringify({ csrf_token: csrfToken }) // Include it in body too
+      'X-CSRFToken': csrfToken
+    }
   })
-    .then(response => {
-      if (!response.ok) {
-        return response.json().then(data => {
-          throw new Error(data.error || 'Failed to save application');
-        });
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Move the application to archived tab
+      const appElement = document.getElementById(`shared-app-${appId}`);
+      if (appElement) {
+        const archivedList = document.querySelector('#archived-applications ul');
+        if (archivedList) {
+          archivedList.appendChild(appElement);
+        }
       }
-      return response.json();
-    })
-    .then(data => {
-      if (data.success) {
-        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Saved to your tracker';
-        btn.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-600', 'hover:from-green-600', 'hover:to-emerald-700');
-        btn.classList.add('bg-gray-100', 'text-gray-600', 'cursor-not-allowed');
-      } else {
-        btn.disabled = false;
-        btn.innerHTML = 'Save to Tracker';
-        alert(data.error || 'Failed to save application.');
+      
+      // Show success message
+      const saveBtn = document.getElementById(`save-btn-${appId}`);
+      if (saveBtn) {
+        saveBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Saved
+        `;
+        saveBtn.disabled = true;
+        saveBtn.classList.remove('from-green-500', 'to-emerald-600', 'hover:from-green-600', 'hover:to-emerald-700');
+        saveBtn.classList.add('bg-gray-100', 'text-gray-600', 'cursor-default');
       }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      btn.disabled = false;
-      btn.innerHTML = 'Save to Tracker';
-      alert(error.message || 'Failed to save application. Please try again.');
-    });
+      
+      // Re-apply filters
+      filterApplications();
+    } else {
+      alert(data.error || 'Failed to save application');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to save application. Please try again.');
+  });
 }
 
 function resetFilters() {
