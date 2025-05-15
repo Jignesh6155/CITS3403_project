@@ -19,8 +19,8 @@ Add editing and moving around applications/Saving applications <--
 - Check whether the new application is displaying the edited changes 
 -> Therefore database is consistent + edit/create application forms works
 
-Web scraper (ill do this) <-- Adriaan
-
+Web scraper
+ 
 Once Rishi has fixed all of it:
 Accepting friends requests 
 Sending friends requests 
