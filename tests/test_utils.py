@@ -54,27 +54,6 @@ class TestResumeProcessor(unittest.TestCase):
         self.assertIn("Engineer", result)
         self.assertIn("Software", result)
 
-class TestScraperGCJobs(unittest.TestCase):
-    def test_build_url(self):
-        url = scraper_GC_jobs.build_url('internships', 'engineering', 'perth', 'ai')
-        self.assertIn('internships', url)
-        self.assertIn('engineering', url)
-        self.assertIn('perth', url)
-        self.assertIn('title=ai', url)
-
-    def test_add_page_param(self):
-        url = scraper_GC_jobs.add_page_param('https://test.com', 2)
-        self.assertIn('page=2', url)
-        url2 = scraper_GC_jobs.add_page_param('https://test.com?foo=bar', 3)
-        self.assertIn('&page=3', url2)
-
-    @patch('app.utils.scraper_GC_jobs.webdriver.Chrome')
-    def test_get_jobs_mocked(self, mock_chrome):
-        mock_driver = MagicMock()
-        mock_chrome.return_value = mock_driver
-        mock_driver.find_elements.return_value = []
-        jobs = scraper_GC_jobs.get_jobs('internships', max_pages=1, headless=True)
-        self.assertIsInstance(jobs, list)
 
 class TestScraperGCJobsDetailed(unittest.TestCase):
     def test_build_url(self):
@@ -92,11 +71,32 @@ class TestScraperGCJobsDetailed(unittest.TestCase):
 
     @patch('app.utils.scraper_GC_jobs_detailed.webdriver.Chrome')
     def test_get_jobs_full_mocked(self, mock_chrome):
+        """Unit test with webdriver Chrome mocked (no real browser)."""
         mock_driver = MagicMock()
         mock_chrome.return_value = mock_driver
         mock_driver.find_elements.return_value = []
         jobs = scraper_GC_jobs_detailed.get_jobs_full('internships', max_pages=1, headless=True)
         self.assertIsInstance(jobs, list)
+        self.assertEqual(len(jobs), 0)
+
+    def test_get_jobs_full_integration(self):
+        """Integration test with real browser (headless=False)"""
+        jobs = scraper_GC_jobs_detailed.get_jobs_full(
+            jobtype='internships',
+            discipline='engineering',
+            location='perth',
+            keyword='ai',
+            max_pages=1,
+            headless=False  # Show the browser window
+        )
+        self.assertIsInstance(jobs, list)
+        self.assertGreater(len(jobs), 0, "Expected at least one job to be scraped")
+
+        job = jobs[0]
+        self.assertIn("title", job)
+        self.assertIn("link", job)
+        self.assertTrue(job["title"])
+        self.assertTrue(job["link"])
 
 if __name__ == '__main__':
     unittest.main()
