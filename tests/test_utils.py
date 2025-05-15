@@ -2,6 +2,13 @@ import unittest
 from unittest.mock import patch, MagicMock
 from app.utils import fuzzy_search, resume_processor, scraper_GC_jobs, scraper_GC_jobs_detailed
 
+"""
+Unit tests for utility functions in app.utils:
+- fuzzy_search: tests fuzzy matching logic and job matching
+- resume_processor: tests PDF/DOCX text extraction and OpenAI mock keyword extraction
+- scraper_GC_jobs_detailed: tests URL building, pagination, and job scraping (mocked & integration)
+"""
+
 class TestFuzzySearch(unittest.TestCase):
 
     def test_is_fuzzy_match_realistic_cases(self):
@@ -48,8 +55,6 @@ class TestFuzzySearch(unittest.TestCase):
         # Should fail on irrelevant search
         self.assertFalse(fuzzy_search.job_matches(job, search='nurse'))
 
-
-        
 
 class TestResumeProcessor(unittest.TestCase):
     @patch('pypdf.PdfReader')
