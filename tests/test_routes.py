@@ -51,37 +51,45 @@ class TestRoutes(FlaskTestBase):
         self.assertIn(b'CareerLink', response.data)
 
     def login(self, email, password):
-        return self.client.post('/signin', data={
+        response = self.client.post('/signin', data={
             'email': email,
             'password': password
         }, follow_redirects=True)
+        # Fail fast if login fails
+        assert b'dashboard' in response.data or b'Dashboard' in response.data, 'Login failed!'
+        return response
 
     def test_navigate_home(self):
         response = self.client.get('/')
         self.assertIn(b'CareerLink', response.data)
 
     def test_navigate_dashboard(self):
-        self.login('test@example.com', 'testpass')
+        user = User.query.filter_by(email='test@example.com').first()
+        self.force_login(user)
         response = self.client.get('/dashboard')
         self.assertIn(b'Dashboard', response.data)
 
     def test_navigate_job_search(self):
-        self.login('test@example.com', 'testpass')
+        user = User.query.filter_by(email='test@example.com').first()
+        self.force_login(user)
         response = self.client.get('/job-search')
         self.assertIn(b'Career Explorer', response.data)
 
     def test_navigate_analytics(self):
-        self.login('test@example.com', 'testpass')
+        user = User.query.filter_by(email='test@example.com').first()
+        self.force_login(user)
         response = self.client.get('/analytics')
         self.assertIn(b'Analytics', response.data)
 
     def test_navigate_job_tracker(self):
-        self.login('test@example.com', 'testpass')
+        user = User.query.filter_by(email='test@example.com').first()
+        self.force_login(user)
         response = self.client.get('/job-tracker')
         self.assertIn(b'Your Job Tracker', response.data)
 
     def test_navigate_comms(self):
-        self.login('test@example.com', 'testpass')
+        user = User.query.filter_by(email='test@example.com').first()
+        self.force_login(user)
         response = self.client.get('/comms')
         self.assertIn(b'Friends', response.data)
 

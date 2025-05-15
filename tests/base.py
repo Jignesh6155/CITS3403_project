@@ -23,6 +23,11 @@ class FlaskTestBase(unittest.TestCase):
         db.engine.dispose()    
         self.app_context.pop() 
 
+    def force_login(self, user):
+        with self.client.session_transaction() as sess:
+            sess['name'] = user.name
+            sess['_user_id'] = str(user.id)
+
 
 # Example usage:
 # from tests.base import FlaskTestBase

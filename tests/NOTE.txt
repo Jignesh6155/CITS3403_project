@@ -1,5 +1,7 @@
 To run unit tests:
 
+## Run from parent directory of project
+
 # Unit tests
 python3 -m unittest discover tests
 
