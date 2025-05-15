@@ -985,7 +985,7 @@ def share_application(app_id):
             create_notification(
                 friend.id,
                 f"{user.name} shared a job application at {application.company} with you",
-                link=url_for('main.job_tracker'),
+                link=url_for('main.comms'),
                 notification_type="application_shared"
             )
             flash(f'Application shared with {friend.name}', 'success')
