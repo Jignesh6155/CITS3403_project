@@ -64,137 +64,136 @@ def create_notification(user_id, content, link=None, notification_type="general"
 live_job_queue = queue.Queue()
 HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
 SCRAPE_SIZE = 1
-def background_scraper(user_id=1, jobtype='internships', discipline=None, location=None, keyword=None):
-    if current_app.config.get('DEBUG', False):
-        print(f"[DEBUG] Starting scraping with: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-    with current_app.app_context():
+# ─────────────────────────────────────────────────────────────────────────────
+def background_scraper(
+    app,
+    user_id: int = 1,
+    jobtype: str = "internships",
+    discipline: str | None = None,
+    location: str | None = None,
+    keyword: str | None = None,
+) -> None:
+    """
+    Run GradConnection scraping in a detached thread and stream results into
+    `live_job_queue`.  All DB and Flask-config access happens *inside* an
+    app-context so `current_app`, `db`, etc. are safe to use.
+    """
+    # IMPORTANT: do **not** touch current_app before we open the context
+    # -----------------------------------------------------------------
+    with app.app_context():
+
+        debug = app.config.get("DEBUG", False)
+        if debug:
+            print(f"[SCRAPER] starting: user={user_id} jobtype={jobtype} "
+                  f"discipline={discipline} location={location} keyword={keyword}")
+
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
-        from app.models import db, ScrapedJob
-        import json
-        from datetime import datetime, timedelta
-        import pytz
-        import re
-        
+        from app.models import ScrapedJob   # local import – ctx is active
+
         try:
-            if current_app.config.get('DEBUG', False):
-                print(f"[DEBUG] Calling get_jobs_full with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-            jobs = get_jobs_full(jobtype=jobtype, discipline=discipline, location=location, keyword=keyword, max_pages=SCRAPE_SIZE, headless=HEADLESS_TOGGLE)
-            if current_app.config.get('DEBUG', False):
-                print(f"[DEBUG] Successfully scraped {len(jobs)} jobs")
-            
-            # Clear existing jobs for this search
+            jobs = get_jobs_full(
+                jobtype=jobtype,
+                discipline=discipline,
+                location=location,
+                keyword=keyword,
+                max_pages=SCRAPE_SIZE,
+                headless=HEADLESS_TOGGLE,
+            )
+            if debug:
+                print(f"[SCRAPER] {len(jobs)} jobs scraped")
+
+            # clear previous search results for this (user, filter) combo
             ScrapedJob.query.filter_by(
                 user_id=user_id,
                 tag_jobtype=jobtype,
                 tag_location=location,
-                tag_category=discipline
+                tag_category=discipline,
             ).delete()
             db.session.commit()
-            
-            perth_tz = pytz.timezone('Australia/Perth')
-            
-            for i, job in enumerate(jobs):
-                try:
-                    closing_in = job.get("closing_in", "")
-                    closing_date = None
-                    # Estimate closing_date from closing_in
-                    if closing_in:
-                        closing_in_lower = closing_in.lower()
-                        now = datetime.now(timezone.utc)
-                        days_match = re.search(r'(\d+)\s*days?', closing_in_lower)
-                        months_match = re.search(r'(\d+)\s*months?', closing_in_lower)
-                        hours_match = re.search(r'(\d+)\s*hours?', closing_in_lower)
-                        if 'an hour' in closing_in_lower:
-                            closing_date = now  # Same day
-                            closing_in = "Closing in 1 hour"
-                        elif hours_match:
-                            closing_date = now  # Same day
-                            hours = int(hours_match.group(1))
-                            closing_in = f"Closing in {hours} hours"
-                        elif 'a day' in closing_in_lower:
-                            closing_date = now + timedelta(days=1)
-                            closing_in = "Closing in 1 day"
-                        elif days_match:
-                            days = int(days_match.group(1))
-                            closing_date = now + timedelta(days=days)
-                            closing_in = f"Closing in {days} days"
-                        elif 'a month' in closing_in_lower:
-                            closing_date = now + timedelta(days=30)
-                            closing_in = "Closing in 1 month"
-                        elif months_match:
-                            months = int(months_match.group(1))
-                            closing_date = now + timedelta(days=30*months)
-                            closing_in = f"Closing in {months} months"
-                        elif closing_in_lower.strip() == 'n/a':
-                            closing_date = None  # No estimate possible
-                        else:
-                            closing_date = None  # Unknown format, leave as None
-                    
-                    # Save to DB
-                    if current_app.config.get('DEBUG', False):
-                        print(f"[DEBUG] Saving job {i+1}/{len(jobs)} to database: {job.get('title')}")
-                    scraped_job = ScrapedJob(
-                        user_id=user_id,
-                        title=job.get("title"),
-                        posted_date=job.get("posted_date"),
-                        closing_in=closing_in,
-                        closing_date=closing_date,
-                        ai_summary=job.get("ai_summary"),
-                        overview=json.dumps(job.get("overview", [])),
-                        responsibilities=json.dumps(job.get("responsibilities", [])),
-                        requirements=json.dumps(job.get("requirements", [])),
-                        skills_and_qualities=json.dumps(job.get("skills_and_qualities", [])),
-                        salary_info=json.dumps(job.get("salary_info", [])),
-                        about_company=json.dumps(job.get("about_company", [])),
-                        full_text=job.get("full_text"),
-                        link=job.get("link"),
-                        source="GradConnection",
-                        tag_location=location,
-                        tag_jobtype=jobtype,   
-                        tag_category=discipline
-                    )
-                    db.session.add(scraped_job)
-                    db.session.commit()
-                    if current_app.config.get('DEBUG', False):
-                        print(f"[DEBUG] Successfully saved job to database: {job.get('title')}")
-                    
-                    # Push to live queue with tags
-                    about = job.get("about_company", [])
-                    live_job_queue.put({
-                        'title': job.get("title"),
-                        'company': about[0] if about else '',
-                        'posted_date': job.get("posted_date"),
-                        'closing_in': closing_in,
-                        'closing_date': closing_date.strftime("%d %b %Y") if closing_date else None,
-                        'ai_summary': job.get("ai_summary"),
-                        'link': job.get("link"),
-                        'tag_location': location,
-                        'tag_jobtype': jobtype,
-                        'tag_category': discipline
-                    })
-                    if current_app.config.get('DEBUG', False):
-                        print(f"[DEBUG] Added job to live queue: {job.get('title')}")
-                except Exception as e:
-                    if current_app.config.get('DEBUG', False):
-                        print(f"[ERROR] Error saving job to DB: {e}")
-                    db.session.rollback()
-                    import traceback
-                    traceback.print_exc()
-                
-                time.sleep(0.1)
-                
-        except Exception as e:
-            print(f"[ERROR] Error in background scraper: {e}")
-            import traceback
-            traceback.print_exc()
-            
+
+            perth_tz = pytz.timezone("Australia/Perth")
+
+            for idx, job in enumerate(jobs, 1):
+                # ---------- closing-date massaging ---------------------
+                closing_in  = job.get("closing_in", "") or ""
+                closing_date = None
+                if closing_in:
+                    now = datetime.now(perth_tz)
+                    txt = closing_in.lower()
+                    d_m = re.search(r"(\d+)\s*days?",  txt)
+                    m_m = re.search(r"(\d+)\s*months?", txt)
+                    h_m = re.search(r"(\d+)\s*hours?",  txt)
+
+                    if "an hour" in txt or h_m:
+                        closing_date = now            # today
+                        hours = int(h_m.group(1)) if h_m else 1
+                        closing_in  = f"Closing in {hours} hour{'s' if hours>1 else ''}"
+                    elif "a day" in txt or d_m:
+                        days = 1 if "a day" in txt else int(d_m.group(1))
+                        closing_date = now + timedelta(days=days)
+                        closing_in  = f"Closing in {days} day{'s' if days>1 else ''}"
+                    elif "a month" in txt or m_m:
+                        months = 1 if "a month" in txt else int(m_m.group(1))
+                        closing_date = now + timedelta(days=30*months)
+                        closing_in  = f"Closing in {months} month{'s' if months>1 else ''}"
+                    # else: leave closing_date = None
+
+                # ---------- DB insert ---------------------------------
+                scraped = ScrapedJob(
+                    user_id        = user_id,
+                    title          = job.get("title"),
+                    posted_date    = job.get("posted_date"),
+                    closing_in     = closing_in,
+                    closing_date   = closing_date,
+                    ai_summary     = job.get("ai_summary"),
+                    overview       = json.dumps(job.get("overview", [])),
+                    responsibilities= json.dumps(job.get("responsibilities", [])),
+                    requirements   = json.dumps(job.get("requirements", [])),
+                    skills_and_qualities = json.dumps(job.get("skills_and_qualities", [])),
+                    salary_info    = json.dumps(job.get("salary_info", [])),
+                    about_company  = json.dumps(job.get("about_company", [])),
+                    full_text      = job.get("full_text"),
+                    link           = job.get("link"),
+                    source         = "GradConnection",
+                    tag_location   = location,
+                    tag_jobtype    = jobtype,
+                    tag_category   = discipline,
+                )
+                db.session.add(scraped)
+                db.session.commit()
+
+                # ---------- push to SSE queue -------------------------
+                about = job.get("about_company", [])
+                live_job_queue.put({
+                    "title"       : scraped.title,
+                    "company"     : about[0] if about else "",
+                    "posted_date" : scraped.posted_date,
+                    "closing_in"  : scraped.closing_in,
+                    "closing_date": closing_date.strftime("%d %b %Y") if closing_date else None,
+                    "ai_summary"  : scraped.ai_summary,
+                    "link"        : scraped.link,
+                    "tag_location": location,
+                    "tag_jobtype" : jobtype,
+                    "tag_category": discipline,
+                })
+
+                if debug:
+                    print(f"[SCRAPER] ({idx}/{len(jobs)}) queued: {scraped.title}")
+
+                time.sleep(0.1)   # polite pause for the stream
+
+        except Exception as exc:
+            db.session.rollback()
+            print("[SCRAPER] ERROR:", exc)
+            import traceback; traceback.print_exc()
+
         finally:
-            # Always send completion message
-            live_job_queue.put({
-                'status': 'complete'
-            })
-            if current_app.config.get('DEBUG', False):
-                print(f"[DEBUG] Scraping complete, sent completion message to queue")
+            live_job_queue.put({"status": "complete"})
+            if debug:
+                print("[SCRAPER] finished – sentinel queued")
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 def job_matches(job, search, location, job_type, category, confidence=0.35):
     """Check if a job matches the search criteria"""
     if not job:
@@ -589,7 +588,7 @@ def comms():
 def upload():
     f = request.files.get("resume")
     if f and f.filename:
-        if current_app.config.get('DEBUG', False):
+        if app.config.get('DEBUG', False):
             print("[DEBUG] Processing uploaded resume with AI")
         filename = f.filename
         content_type = f.content_type or f.mimetype or ''
@@ -598,13 +597,13 @@ def upload():
         # Get AI-suggested job titles (keywords)
         job_titles = resume_processor.extract_keywords_openai(text)
         job_titles = [kw.strip().strip(string.punctuation) for kw in job_titles if kw.strip()]
-        if current_app.config.get('DEBUG', False):
+        if app.config.get('DEBUG', False):
             print("[DEBUG] Extracted keywords:", job_titles)
         # Find up to 5 jobs that fuzzy match any keyword
         from app.models import ScrapedJob
         import json
         all_jobs = ScrapedJob.query.all()
-        if current_app.config.get('DEBUG', False):
+        if app.config.get('DEBUG', False):
             print("[DEBUG] Number of jobs in DB:", len(all_jobs))
         suggestions = []
         for job in all_jobs:
@@ -633,116 +632,174 @@ def upload():
     session['suggested_jobs'] = []
     return redirect(url_for('main.job_search'))
 
+
+# ------------------------------------------------------------------ #
+#  SCRAPED-JOBS JSON  ➜  /api/scraped-jobs
+# ------------------------------------------------------------------ #
 @main_bp.route("/api/scraped-jobs")
 def api_scraped_jobs():
+    print("\n=== [/api/scraped-jobs] request received =====================")
     try:
-        # Get query params
-        search = request.args.get('search', '').strip().lower()
-        location = request.args.get('location', '').strip().lower()
-        job_type = request.args.get('type', '').strip().lower()
-        category = request.args.get('category', '').strip().lower()
-        offset = int(request.args.get('offset', 0))
-        limit = int(request.args.get('limit', 10))
-        
-        # Query all jobs
-        jobs_query = ScrapedJob.query
-        jobs = jobs_query.all()
-        filtered = [job for job in jobs if job_matches(job, search, location, job_type, category)]
-        total = len(filtered)
-        paginated = filtered[offset:offset+limit]
+        # ── query-string params ────────────────────────────────────────
+        search    = request.args.get("search",    "").strip().lower()
+        location  = request.args.get("location",  "").strip().lower()
+        job_type  = request.args.get("type",      "").strip().lower()
+        category  = request.args.get("category",  "").strip().lower()
+        offset    = int(request.args.get("offset", 0))
+        limit     = int(request.args.get("limit", 10))
+
+        print(f"[ARGS] search='{search}' location='{location}' "
+              f"type='{job_type}' category='{category}' offset={offset} limit={limit}")
+
+        # ── DB query & Python filtering  ───────────────────────────────
+        jobs = ScrapedJob.query.all()
+        print(f"[DB] fetched {len(jobs)} rows from scraped_job")
+
+        filtered  = [j for j in jobs if job_matches(j, search, location,
+                                                    job_type, category)]
+        total     = len(filtered)
+        paginated = filtered[offset: offset + limit]
+
+        print(f"[FILTER] {total} match filters, returning {len(paginated)} rows")
+
+        # ── serialise results  ─────────────────────────────────────────
         result = []
-        
-        for job in paginated:
+        for idx, job in enumerate(paginated, 1):
             try:
                 about = json.loads(job.about_company) if job.about_company else []
-            except Exception:
+            except Exception as ex:
+                print(f"[WARN] json.loads failed for job.id={job.id}: {ex}")
                 about = []
-                
-            # Format closing date if it exists
-            closing_date_str = None
-            if job.closing_date:
-                closing_date_str = job.closing_date.strftime("%d %b %Y")  # e.g., "14 Feb 2025"
-                
-            # Format tags for display
-            tags = {
-                'location': job.tag_location if job.tag_location else None,
-                'jobtype': job.tag_jobtype if job.tag_jobtype else None,
-                'category': job.tag_category if job.tag_category else None
-            }
-            
+
+            closing_date_str = (
+                job.closing_date.strftime("%d %b %Y")
+                if job.closing_date else None
+            )
+
             result.append({
-                'title': job.title,
-                'company': about[0] if about else '',
-                'posted_date': job.posted_date,
-                'closing_in': job.closing_in,
-                'closing_date': closing_date_str,
-                'ai_summary': job.ai_summary,
-                'link': job.link,
-                'tags': tags
+                "title":        job.title,
+                "company":      about[0] if about else "",
+                "posted_date":  job.posted_date,
+                "closing_in":   job.closing_in,
+                "closing_date": closing_date_str,
+                "ai_summary":   job.ai_summary,
+                "link":         job.link,
+                "tags": {
+                    "location": job.tag_location or None,
+                    "jobtype":  job.tag_jobtype or None,
+                    "category": job.tag_category or None,
+                },
             })
-            
-        return jsonify({
-            'jobs': result,
-            'has_more': offset+limit < total,
-            'total': total
-        })
+            print(f"[SERIALISE] #{idx}  job.id={job.id} title='{job.title}'")
+
+        payload = {"jobs": result,
+                   "has_more": offset + limit < total,
+                   "total": total}
+        print("[RETURN] sending JSON payload")
+        print("============================================================\n")
+        return jsonify(payload)
+
     except Exception as e:
-        print(f"[ERROR] Error in /api/scraped-jobs endpoint: {e}")
-        import traceback
-        traceback.print_exc()
+        print("[ERROR] in /api/scraped-jobs:", e)
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-@main_bp.route('/api/start-scraping', methods=['POST'])
+
+
+# ------------------------------------------------------------------ #
+#  START BACKGROUND SCRAPE  ➜  /api/start-scraping   (POST)
+# ------------------------------------------------------------------ #
+@main_bp.route("/api/start-scraping", methods=["POST"])
 @csrf.exempt
-@login_required
 def api_start_scraping():
+    print("\n=== [/api/start-scraping] POST received =====================")
     try:
-        user = current_user
+        user = current_user          # may be Anonymous if no login
+        print(f"[AUTH] current_user id={getattr(user,'id',None)} "
+              f"auth={user.is_authenticated if user else False}")
+
         data = request.get_json(force=True) or {}
-        if current_app.config.get('DEBUG', False):
-            print("[DEBUG] Received scraping parameters:", data)
-        jobtype = data.get('jobtype', 'internships')
-        discipline = data.get('discipline') or None
-        location = data.get('location') or None
-        keyword = data.get('keyword') or None
-        # Rate limit check
-        if not rate_limit_check(user.id, 'scraping'):
-            return jsonify({"error": "Rate limit exceeded. Please wait before starting another search."}), 429
-        if current_app.config.get('DEBUG', False):
-            print(f"[DEBUG] Starting background scraper thread with parameters: jobtype={jobtype}, discipline={discipline}, location={location}, keyword={keyword}")
-        threading.Thread(target=background_scraper, args=(user.id, jobtype, discipline, location, keyword), daemon=True).start()
-        if current_app.config.get('DEBUG', False):
-            print("[DEBUG] Background scraper thread started")
-        return '', 202
+        print(f"[JSON] {data}")
+
+        jobtype    = data.get("jobtype",    "internships")
+        discipline = data.get("discipline") or None
+        location   = data.get("location")   or None
+        keyword    = data.get("keyword")    or None
+        print(f"[PARAMS] jobtype={jobtype} discipline={discipline} "
+              f"location={location} keyword={keyword}")
+
+        if user.is_authenticated and not rate_limit_check(user.id, "scraping"):
+            print("[RATE] hit limit – rejecting")
+            return jsonify({"error": "Rate limit exceeded"}), 429
+
+        print("[THREAD] kicking off background_scraper() …")
+        app = current_app._get_current_object()
+        threading.Thread(
+            target=background_scraper,
+            args=(app, getattr(user, "id", 1), jobtype, discipline, location, keyword),
+            daemon=True
+        ).start()
+        print("[THREAD] started OK")
+        print("============================================================\n")
+        return "", 202
+
     except Exception as e:
-        print(f"[ERROR] Error in /api/start-scraping endpoint: {e}")
-        import traceback
-        traceback.print_exc()
+        print("[ERROR] in /api/start-scraping:", e)
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-@main_bp.route('/api/scraping-stream')
-@login_required
+
+
+# ------------------------------------------------------------------ #
+#  SERVER-SENT EVENTS STREAM  ➜  /api/scraping-stream
+# ------------------------------------------------------------------ #
+@main_bp.route("/api/scraping-stream")
 def api_scraping_stream():
+    print("\n=== [/api/scraping-stream] client connected ================")
+
     def event_stream():
-        print("[SSE] event_stream started")
+        print("[SSE] generator entered")
         while True:
             try:
                 job = live_job_queue.get(timeout=30)
-                print("[SSE] Got job from queue:", job)
-                if 'status' not in job:
-                    job['tags'] = {
-                        'location': job.get('tag_location'),
-                        'jobtype': job.get('tag_jobtype'),
-                        'category': job.get('tag_category')
+                print(f"[SSE] dequeued → {job}")
+
+                if 'status' not in job:          # normal job payload
+                    job["tags"] = {
+                        "location": job.get("tag_location"),
+                        "jobtype":  job.get("tag_jobtype"),
+                        "category": job.get("tag_category"),
                     }
+
                 yield f"data: {json.dumps(job)}\n\n"
-                if job.get('status') == 'complete':
-                    print("[SSE] Scraping complete, breaking loop")
+
+                if job.get("status") == "complete":
+                    print("[SSE] scrape complete – closing stream")
                     break
+
             except queue.Empty:
-                print("[SSE] Queue empty, sending ping")
-                yield f"data: {json.dumps({'type': 'ping'})}\n\n"
-    return Response(stream_with_context(event_stream()), mimetype='text/event-stream')
+                print("[SSE] queue empty – sending keep-alive ping")
+                yield 'data: {"type":"ping"}\n\n'
+
+            except GeneratorExit:
+                # client disconnected
+                print("[SSE] client disconnected")
+                break
+
+            except Exception as ex:
+                print("[SSE] unexpected error:", ex)
+                import traceback; traceback.print_exc()
+                break
+
+        print("[SSE] generator exiting")
+
+    response = Response(stream_with_context(event_stream()),
+                        mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    print("============================================================\n")
+    return response
+
+
 
 @main_bp.route('/send-friend-request', methods=['POST'])
 @login_required
