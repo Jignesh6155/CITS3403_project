@@ -11,6 +11,22 @@
   <!-- Tailwind + your custom CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <style>
+  /* Default star state - gray outline */
+  .favorite-btn .star-icon {
+    color: #9ca3af; /* Gray-400 */
+  }
+  
+  /* Hover state - slightly yellow */
+  .favorite-btn:hover .star-icon {
+    color: #fbbf24; /* Amber-400 */
+  }
+  
+  /* Active/favorite state - filled yellow */
+  .favorite-btn.is-favorite .star-icon {
+    color: #f59e0b; /* Amber-500 */
+  }
+</style>
 
   <!-- Lucide icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
