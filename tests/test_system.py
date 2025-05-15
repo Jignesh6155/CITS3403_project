@@ -8,6 +8,8 @@ from app import create_app
 from app.models import db, User
 from app.config import TestingConfig
 
+# https://selenium-python.readthedocs.io/locating-elements.html
+
 
 from flask import url_for
 
