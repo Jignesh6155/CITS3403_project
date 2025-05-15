@@ -425,16 +425,22 @@ function onDrop(event, columnId) {
 
 function deleteJob(id) {
   const jobId = id.replace('job-', '');
+  
+  // Get the CSRF token from meta tag
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+  
   fetch(`/delete-application/${jobId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRFToken': getCSRFToken()
+      'X-CSRFToken': csrfToken  // Make sure this is included
     }
   })
   .then(response => {
     if (!response.ok) {
-      throw new Error('Failed to delete job');
+      return response.json().then(data => {
+        throw new Error(data.error || 'Failed to delete job');
+      });
     }
     return response.json();
   })
@@ -446,10 +452,9 @@ function deleteJob(id) {
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Failed to delete job. Please try again.');
+    alert(error.message || 'Failed to delete job. Please try again.');
   });
 }
-
 // SHARE MODAL SCRIPT
 let currentAppId = null;
 function openShareModal(appId) {
@@ -460,25 +465,49 @@ function closeShareModal() {
   document.getElementById('shareModal').classList.add('hidden');
   currentAppId = null;
 }
-document.getElementById('shareForm').onsubmit = function(e) {
+document.getElementById('shareForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  const friendId = this.friend_id.value;
+  
+  // Get selected friend
+  const friendId = this.querySelector('input[name="friend_id"]:checked')?.value;
+  if (!friendId) {
+    alert('Please select a friend to share with.');
+    return;
+  }
+
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+  
+  // Create FormData object
+  const formData = new FormData();
+  formData.append('friend_id', friendId);
+  formData.append('csrf_token', csrfToken);
+  
   fetch(`/share-application/${currentAppId}`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'X-CSRFToken': getCSRFToken()
+      'X-CSRFToken': csrfToken // Include token in header too
     },
-    body: `friend_id=${friendId}`
-  }).then(response => {
+    body: formData
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.text().then(text => {
+        throw new Error(text || 'Failed to share application');
+      });
+    }
     if (response.redirected) {
       window.location.href = response.url;
     } else {
       closeShareModal();
+      alert('Application shared successfully!');
     }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to share application. Please try again.');
   });
-};
-
+});
 // Friend search functionality for share modal
 document.addEventListener('DOMContentLoaded', function() {
   // Setup friend item click behavior
@@ -682,6 +711,14 @@ function confirmDeleteJob(id) {
   // Focus the Delete button for accessibility
   document.getElementById('confirm-delete-btn').focus();
 }
+
+document.getElementById('confirm-delete-btn').onclick = function() {
+  if (jobToDelete) {
+    deleteJob(jobToDelete);
+    document.getElementById('delete-confirm-modal').classList.add('hidden');
+    jobToDelete = null;
+  }
+};
 document.getElementById('cancel-delete-btn').onclick = function() {
   document.getElementById('delete-confirm-modal').classList.add('hidden');
   jobToDelete = null;
@@ -690,13 +727,7 @@ document.getElementById('close-delete-modal').onclick = function() {
   document.getElementById('delete-confirm-modal').classList.add('hidden');
   jobToDelete = null;
 };
-document.getElementById('confirm-delete-btn').onclick = function() {
-  if (jobToDelete) {
-    deleteJob(jobToDelete);
-    document.getElementById('delete-confirm-modal').classList.add('hidden');
-    jobToDelete = null;
-  }
-};
+
 // Add keydown event for Enter to confirm delete
 window.addEventListener('keydown', function(e) {
   const modal = document.getElementById('delete-confirm-modal');
