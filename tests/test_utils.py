@@ -3,29 +3,53 @@ from unittest.mock import patch, MagicMock
 from app.utils import fuzzy_search, resume_processor, scraper_GC_jobs, scraper_GC_jobs_detailed
 
 class TestFuzzySearch(unittest.TestCase):
-    def test_is_fuzzy_match_exact(self):
-        self.assertTrue(fuzzy_search.is_fuzzy_match('engineer', 'engineer'))
-        self.assertFalse(fuzzy_search.is_fuzzy_match('engineer', 'doctor'))
 
-    def test_is_fuzzy_match_fuzzy(self):
-        self.assertTrue(fuzzy_search.is_fuzzy_match('engineer', 'engeneer', threshold=0.7))
-        self.assertFalse(fuzzy_search.is_fuzzy_match('engineer', 'doctor', threshold=0.7))
+    def test_is_fuzzy_match_realistic_cases(self):
+        """Test is_fuzzy_match with realistic job title variations."""
+        # Exact match
+        self.assertTrue(fuzzy_search.is_fuzzy_match('Software Engineer', 'Software Engineer'))
 
-    def test_job_matches_basic(self):
+        # Common typo (fuzzy match expected to pass with low threshold)
+        self.assertTrue(fuzzy_search.is_fuzzy_match('Software Engineer', 'Sofware Enginer', threshold=0.7))
+
+        # Case insensitivity
+        self.assertTrue(fuzzy_search.is_fuzzy_match('Software Engineer', 'software engineer'))
+
+        # Different job role (should fail)
+        self.assertFalse(fuzzy_search.is_fuzzy_match('Software Engineer', 'Data Scientist', threshold=0.7))
+
+        # Similar but slightly different roles
+        self.assertTrue(fuzzy_search.is_fuzzy_match('Software Engineer', 'Software Developer', threshold=0.6))
+
+        # Too different, should fail
+        self.assertFalse(fuzzy_search.is_fuzzy_match('Software Engineer', 'Doctor', threshold=0.6))
+
+    def test_job_matches_with_realistic_job(self):
+        """Test job_matches with a realistic job object and search terms."""
         class DummyJob:
-            title = 'Software Engineer'
-            ai_summary = 'Develops software.'
+            title = 'Backend Software Engineer'
+            ai_summary = 'Work on backend systems and APIs.'
             overview = '[]'
             responsibilities = '[]'
             requirements = '[]'
             skills_and_qualities = '[]'
             salary_info = '[]'
             about_company = '["Tech Corp"]'
-            full_text = 'Software engineering at Tech Corp.'
+            full_text = 'This role involves backend development and software engineering tasks at Tech Corp.'
 
         job = DummyJob()
+
+        # Should match on title
         self.assertTrue(fuzzy_search.job_matches(job, search='engineer'))
-        self.assertFalse(fuzzy_search.job_matches(job, search='doctor'))
+
+        # Should match on full_text content
+        self.assertTrue(fuzzy_search.job_matches(job, search='backend'))
+
+        # Should fail on irrelevant search
+        self.assertFalse(fuzzy_search.job_matches(job, search='nurse'))
+
+
+        
 
 class TestResumeProcessor(unittest.TestCase):
     @patch('pypdf.PdfReader')
