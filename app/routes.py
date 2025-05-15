@@ -588,7 +588,7 @@ def comms():
 def upload():
     f = request.files.get("resume")
     if f and f.filename:
-        if app.config.get('DEBUG', False):
+        if current_app.config.get('DEBUG', False):
             print("[DEBUG] Processing uploaded resume with AI")
         filename = f.filename
         content_type = f.content_type or f.mimetype or ''
@@ -597,13 +597,13 @@ def upload():
         # Get AI-suggested job titles (keywords)
         job_titles = resume_processor.extract_keywords_openai(text)
         job_titles = [kw.strip().strip(string.punctuation) for kw in job_titles if kw.strip()]
-        if app.config.get('DEBUG', False):
+        if current_app.config.get('DEBUG', False):
             print("[DEBUG] Extracted keywords:", job_titles)
         # Find up to 5 jobs that fuzzy match any keyword
         from app.models import ScrapedJob
         import json
         all_jobs = ScrapedJob.query.all()
-        if app.config.get('DEBUG', False):
+        if current_app.config.get('DEBUG', False):
             print("[DEBUG] Number of jobs in DB:", len(all_jobs))
         suggestions = []
         for job in all_jobs:
@@ -889,19 +889,32 @@ def handle_friend_request(request_id):
 @main_bp.route("/add-application", methods=["POST"])
 @login_required
 def add_application():
-    user = current_user
+    print("[DEBUG] /add-application route entered")
+    print("[DEBUG] request.is_json:", request.is_json)
+    print("[DEBUG] request.data:", request.data)
+    print("[DEBUG] request.form:", request.form)
+    from flask_login import current_user
+    print("[DEBUG] current_user.is_authenticated:", current_user.is_authenticated)
+    from flask import current_app
+    debug = current_app.config.get('DEBUG', False)
     try:
         if request.is_json:
-            # Handle JSON request from job search page
             data = request.get_json()
-            
+            if debug:
+                print("[DEBUG] /add-application (JSON):", data)
+                print("[DEBUG] Current user:", current_user)
+            # Check for required fields
+            missing = [k for k in ['title', 'company'] if not data.get(k)]
+            if missing and debug:
+                print(f"[DEBUG] Missing required fields: {missing}")
             # Parse the closing date if it exists
             closing_date = None
             if data.get('closing_date'):
                 try:
                     closing_date = datetime.strptime(data['closing_date'], "%d %b %Y")
                 except ValueError:
-                    pass
+                    if debug:
+                        print("[DEBUG] Invalid closing_date format:", data.get('closing_date'))
             application = JobApplication(
                 title=data['title'],
                 company=data['company'],
@@ -909,11 +922,13 @@ def add_application():
                 job_type=data.get('job_type'),
                 closing_date=closing_date,
                 status="Saved",
-                user=user,
+                user=current_user,
                 scraped_job_id=data.get('scraped_job_id')
             )
         else:
-            # Handle form submission from job tracker page
+            if debug:
+                print("[DEBUG] /add-application (FORM):", request.form)
+                print("[DEBUG] Current user:", current_user)
             application = JobApplication(
                 title=request.form['title'],
                 company=request.form['company'],
@@ -921,15 +936,19 @@ def add_application():
                 job_type=request.form.get('job_type'),
                 closing_date=datetime.strptime(request.form['closing_date'], "%Y-%m-%d") if request.form.get('closing_date') else None,
                 status=request.form.get('status', 'Saved'),
-                user=user
+                user=current_user
             )
         db.session.add(application)
         db.session.commit()
+        if debug:
+            print("[DEBUG] Application saved successfully:", application)
         if request.is_json:
             return jsonify({"success": True})
         return redirect(url_for("main.job_tracker"))
     except Exception as e:
         db.session.rollback()
+        if debug:
+            print("[DEBUG] Error in /add-application:", str(e))
         if request.is_json:
             return jsonify({"error": str(e)}), 400
         flash('Error adding application: ' + str(e), 'error')

@@ -4,6 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}CareerLink{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+  {% block head %}{% endblock %}
 
   <!-- Tailwind + your custom CSS -->
   <script src="https://cdn.tailwindcss.com"></script>

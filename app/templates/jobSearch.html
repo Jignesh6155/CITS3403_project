@@ -3,6 +3,11 @@
 
 {% block title %}Job Search{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
 {% block content %}
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
   <div class="flex items-center gap-2">
@@ -342,10 +347,13 @@ function saveJob(jobData) {
     btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
   }
 
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  const CSRF = csrfMeta ? csrfMeta.content : '';
   fetch('/add-application', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(CSRF && { 'X-CSRFToken': CSRF }),
     },
     body: JSON.stringify(payload)
   })
