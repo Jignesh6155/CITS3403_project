@@ -487,42 +487,74 @@ def analytics():
     )
 
 @main_bp.route('/toggle-favorite/<int:friend_id>', methods=['POST'])
+@login_required
 def toggle_favorite(friend_id):
-    print(f"Toggle favorite request received for friend_id: {friend_id}")
+    # Get the CSRF token from the request
+    csrf_token = request.headers.get('X-CSRFToken')
     
-    if 'name' not in session:
-        print("Error: Not logged in")
-        return jsonify({"error": "Not logged in"}), 401
-        
-    current_user = User.query.filter_by(name=session['name']).first()
-    if not current_user:
-        print("Error: User not found")
-        return jsonify({"error": "User not found"}), 404
-        
+    if not csrf_token:
+        return jsonify({"success": False, "error": "CSRF token missing"}), 400
+    
     friend = User.query.get(friend_id)
     if not friend:
-        print(f"Error: Friend with ID {friend_id} not found")
-        return jsonify({"error": "Friend not found"}), 404
+        return jsonify({"success": False, "error": "Friend not found"}), 404
         
     # Check if this is actually a friend
-    if friend not in current_user.friends:
-        print(f"Error: User {current_user.id} is not friends with {friend_id}")
-        return jsonify({"error": "Not friends with this user"}), 403
+    if friend not in current_user.friends.all():
+        return jsonify({"success": False, "error": "Not friends with this user"}), 403
     
     try:
-        # For this implementation, we'll use localStorage on the client side 
-        # to track favorites, so we don't need to modify the database.
-        print(f"Toggle favorite successful for friend_id: {friend_id}")
+        # For this implementation, we'll use a simple mechanism
+        # You could add a FavoriteFriend model instead for a more robust solution
+        
+        # Check if a FavoriteFriend row already exists
+        from app.models import db, FavoriteFriend
+        
+        # Check if FavoriteFriend model exists, if not, create it
+        if not hasattr(db.Model, 'FavoriteFriend'):
+            class FavoriteFriend(db.Model):
+                __tablename__ = 'favorite_friends'
+                user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+                friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+            
+            # Add relationship to User model
+            User.favorite_friends = db.relationship('FavoriteFriend',
+                                              foreign_keys=[FavoriteFriend.user_id],
+                                              backref=db.backref('user', lazy='joined'),
+                                              lazy='dynamic',
+                                              cascade='all, delete-orphan')
+            
+            # Create the table
+            db.create_all()
+        
+        existing = FavoriteFriend.query.filter_by(
+            user_id=current_user.id, 
+            friend_id=friend_id
+        ).first()
+        
+        is_favorite = False
+        
+        if existing:
+            # Remove favorite
+            db.session.delete(existing)
+            db.session.commit()
+        else:
+            # Add favorite
+            favorite = FavoriteFriend(user_id=current_user.id, friend_id=friend_id)
+            db.session.add(favorite)
+            db.session.commit()
+            is_favorite = True
         
         return jsonify({
             "success": True, 
-            "is_favorite": True
+            "is_favorite": is_favorite
         })
         
     except Exception as e:
+        db.session.rollback()
         print(f"Error in toggle_favorite: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 @main_bp.route("/comms")
 @login_required  # Require login for friends/comms
 def comms():
@@ -981,12 +1013,29 @@ def share_application(app_id):
     if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
         return redirect(url_for('main.job_tracker'))
+        
     friend_id = request.form.get('friend_id')
+    if not friend_id:
+        flash('No friend selected', 'error')
+        return redirect(url_for('main.job_tracker'))
+        
     friend = User.query.get(friend_id)
     if friend and friend in user.friends:
         if application not in friend.shared_applications:
+            # Add to shared_applications relationship
             friend.shared_applications.append(application)
+            
+            # Explicitly set status to 'active' in the association table
+            db.session.flush()  # Ensure the relationship is in the database
+            
+            # Set the status to 'active' in the association table
+            db.session.execute(
+                text("UPDATE application_shares SET status = 'active' WHERE user_id = :user_id AND job_application_id = :app_id"),
+                {"user_id": friend.id, "app_id": application.id}
+            )
+            
             db.session.commit()
+            
             create_notification(
                 friend.id,
                 f"{user.name} shared a job application at {application.company} with you",
@@ -999,7 +1048,6 @@ def share_application(app_id):
     else:
         flash('Friend not found', 'error')
     return redirect(url_for('main.job_tracker'))
-
 @main_bp.route("/update-job-status", methods=["POST"])
 def update_job_status():
     job_id = request.json.get("job_id")
@@ -1084,18 +1132,14 @@ def notifications():
         return jsonify({'success': True})
 
 @main_bp.route("/delete-application/<int:job_id>", methods=["DELETE"])
+@login_required  # Use Flask-Login's decorator
 def delete_application(job_id):
-    if 'name' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-        
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    # Use current_user from Flask-Login
     application = JobApplication.query.get(job_id)
     if not application:
         return jsonify({"error": "Application not found"}), 404
         
-    if application.user_id != user.id:
+    if application.user_id != current_user.id:
         return jsonify({"error": "Not authorized"}), 403
     try:
         db.session.delete(application)
@@ -1104,15 +1148,11 @@ def delete_application(job_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
+    
 @main_bp.route('/save-shared-application/<int:app_id>', methods=['POST'])
+@login_required
 def save_shared_application(app_id):
-    if 'name' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-        
-    user = User.query.filter_by(name=session['name']).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    user = current_user
     
     # Get the original application
     shared_app = JobApplication.query.get(app_id)
@@ -1138,7 +1178,8 @@ def save_shared_application(app_id):
         
         db.session.add(new_app)
         
-        # Update the status in application_shares using text() and parameter binding
+        # Update the status in application_shares to 'archived'
+        from sqlalchemy import text
         db.session.execute(
             text("UPDATE application_shares SET status = 'archived' WHERE user_id = :user_id AND job_application_id = :app_id"),
             {"user_id": user.id, "app_id": app_id}
@@ -1153,8 +1194,8 @@ def save_shared_application(app_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"Error saving shared application: {str(e)}")  # Add this for debugging
         return jsonify({"error": str(e)}), 500
-    
 
 @main_bp.route("/update-application/<int:job_id>", methods=["POST"])
 @login_required
