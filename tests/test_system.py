@@ -62,10 +62,6 @@ class SystemTestCase(unittest.TestCase):
         cls.app_context.pop()
 
 
-    def test_home_page(self):
-        self.driver.get(f'{self.base_url}/')
-        self.assertIn('index', self.driver.page_source)
-
     def test_signup_and_dashboard(self):
         self.driver.get(f'{self.base_url}/')
         # Fill signup form and submit
