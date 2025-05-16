@@ -1,18 +1,21 @@
 import os
 
+# Base configuration with default settings.
 class Config:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///careerlink.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
+    
+# Development configuration with debug and fallback secret key.
 class DevelopmentConfig(Config):
     DEBUG = True
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-Temporary_Key')
-    SECRET_KEY = "Temporary_Key"
 
+# Production configuration with environment variable for secret key.
 class ProductionConfig(Config):
     DEBUG = False
     SECRET_KEY = os.environ.get('SECRET_KEY')
 
+# Testing configuration using in-memory database and disabled CSRF.
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
