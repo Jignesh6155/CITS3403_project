@@ -145,10 +145,72 @@ Tests cover routes, models, utilities, and system integration.
 
 - **Environment Variables:**  
   - `OPENAI_API_KEY` (required for resume analysis)
-  - `SECRET_KEY` (set in `app/config.py` or via `.env` for production)
+  - `SECRET_KEY` (required for session security; set in your .env file or environment)
 - **Database:**  
   - Default: SQLite (`careerlink.db`)
   - For testing: in-memory SQLite
+
+---
+
+## Application Configuration Modes
+
+The application supports different configuration modes for various environments. You can control which configuration is used by changing the argument to `create_app()` in `run.py` or by setting up your own entry point.
+
+### Available Configurations
+
+- **DevelopmentConfig**
+  - Used for local development.
+  - Enables debug mode (`DEBUG=True`).
+  - Uses a temporary secret key unless overridden by the `SECRET_KEY` environment variable.
+  - Database: `careerlink.db` (SQLite file).
+
+- **ProductionConfig**
+  - Used for deployment/production.
+  - Disables debug mode (`DEBUG=False`).
+  - Requires `SECRET_KEY` to be set in the environment (no default fallback).
+  - Database: `careerlink.db` (SQLite file, or override with your own URI).
+
+- **TestingConfig**
+  - Used for running tests.
+  - Enables testing mode (`TESTING=True`).
+  - Uses an in-memory SQLite database (`sqlite:///:memory:`).
+  - Disables CSRF protection for easier testing.
+  - Uses a temporary secret key unless overridden by the `SECRET_KEY` environment variable.
+
+### How to Use a Configuration
+
+By default, `run.py` uses `DevelopmentConfig`:
+```python
+from app.config import DevelopmentConfig
+app = create_app(DevelopmentConfig)
+```
+
+To use a different config (e.g., for production), change this line to:
+```python
+from app.config import ProductionConfig
+app = create_app(ProductionConfig)
+```
+
+Or for testing:
+```python
+from app.config import TestingConfig
+app = create_app(TestingConfig)
+```
+
+### Setting Environment Variables
+
+- Create a `.env` file in your project root:
+  ```
+  SECRET_KEY=your-very-secret-key
+  ```
+- Or set the environment variable directly in your shell:
+  ```bash
+  export SECRET_KEY=your-very-secret-key
+  ```
+
+**Note:**
+- For production, always set a strong `SECRET_KEY` and do not rely on defaults.
+- For development and testing, defaults are provided for convenience, but you can override them with your own environment variables.
 
 ---
 
