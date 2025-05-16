@@ -126,20 +126,48 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Mark specific notifications as read
-  function markAsRead(ids) {
-    fetch('/api/notifications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notification_ids: ids })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        loadNotifications(currentPage, true);
-        updateNotificationCount();
-      }
-    });
-  }
+ function markAsRead(ids) {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  fetch('/api/notifications', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken  // Add this line
+    },
+    body: JSON.stringify({ notification_ids: ids })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      loadNotifications(currentPage, true);
+      updateNotificationCount();
+    }
+  })
+  .catch(error => console.error('Error:', error)); // Add error handling
+}
+
+// Also update the "Mark All as Read" button handler similarly
+markAllReadBtn.addEventListener('click', function() {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  fetch('/api/notifications', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken  // Add this line
+    },
+    body: JSON.stringify({ notification_ids: [] })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      loadNotifications(1, true);
+      updateNotificationCount();
+    }
+  })
+  .catch(error => console.error('Error:', error));
+});
   
   // Update notification count badge
   function updateNotificationCount() {
