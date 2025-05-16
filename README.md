@@ -81,7 +81,7 @@ The platform is built for the UWA CITS3403 Software Project unit 2025 Semester 1
 4. **Configure environment variables**  
    Create a `.env` file in the project root:
    ```
-   OPENAI_API_KEY=your-openai-api-key-here
+   OPENAI_API_KEY=your-openai-api-key
    ```
 
 5. **Initialize the database**  
@@ -146,6 +146,7 @@ Tests cover routes, models, utilities, and system integration.
 - **Environment Variables:**  
   - `OPENAI_API_KEY` (required for resume analysis)
   - `SECRET_KEY` (required for session security; set in your .env file or environment)
+  - `APP_CONFIG` (controls which configuration is used: `development`, `production`, or `testing`)
 - **Database:**  
   - Default: SQLite (`careerlink.db`)
   - For testing: in-memory SQLite
@@ -154,23 +155,23 @@ Tests cover routes, models, utilities, and system integration.
 
 ## Application Configuration Modes
 
-The application supports different configuration modes for various environments. You can control which configuration is used by changing the argument to `create_app()` in `run.py` or by setting up your own entry point.
+The application now selects its configuration class based on the `APP_CONFIG` environment variable. This is an industry-standard approach for flexible deployment.
 
 ### Available Configurations
 
-- **DevelopmentConfig**
+- **DevelopmentConfig** (`APP_CONFIG=development`)
   - Used for local development.
   - Enables debug mode (`DEBUG=True`).
   - Uses a temporary secret key unless overridden by the `SECRET_KEY` environment variable.
   - Database: `careerlink.db` (SQLite file).
 
-- **ProductionConfig**
+- **ProductionConfig** (`APP_CONFIG=production`)
   - Used for deployment/production.
   - Disables debug mode (`DEBUG=False`).
   - Requires `SECRET_KEY` to be set in the environment (no default fallback).
   - Database: `careerlink.db` (SQLite file, or override with your own URI).
 
-- **TestingConfig**
+- **TestingConfig** (`APP_CONFIG=testing`)
   - Used for running tests.
   - Enables testing mode (`TESTING=True`).
   - Uses an in-memory SQLite database (`sqlite:///:memory:`).
@@ -179,33 +180,39 @@ The application supports different configuration modes for various environments.
 
 ### How to Use a Configuration
 
-By default, `run.py` uses `DevelopmentConfig`:
-```python
-from app.config import DevelopmentConfig
-app = create_app(DevelopmentConfig)
-```
+By default, the app uses `DevelopmentConfig` unless you specify otherwise. To change the configuration, set the `APP_CONFIG` environment variable:
 
-To use a different config (e.g., for production), change this line to:
-```python
-from app.config import ProductionConfig
-app = create_app(ProductionConfig)
-```
+- **In your shell or .env file:**
+  ```bash
+  export APP_CONFIG=production
+  # or
+  export APP_CONFIG=testing
+  ```
+  Or in `.env`:
+  ```
+  APP_CONFIG=production
+  ```
 
-Or for testing:
-```python
-from app.config import TestingConfig
-app = create_app(TestingConfig)
-```
+- **What this does:**
+  - `APP_CONFIG=development` → DevelopmentConfig
+  - `APP_CONFIG=production` → ProductionConfig
+  - `APP_CONFIG=testing` → TestingConfig
 
-### Setting Environment Variables
+- **No need to edit `run.py` to change environments!**
+
+### Setting Other Environment Variables
 
 - Create a `.env` file in your project root:
   ```
   SECRET_KEY=your-very-secret-key
+  OPENAI_API_KEY=your-openai-api-key
+  APP_CONFIG=development  # or production, or testing
   ```
 - Or set the environment variable directly in your shell:
   ```bash
   export SECRET_KEY=your-very-secret-key
+  export OPENAI_API_KEY=your-openai-api-key
+  export APP_CONFIG=production
   ```
 
 **Note:**
