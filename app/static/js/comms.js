@@ -30,8 +30,10 @@ function initFilterToggle() {
   
   if (!filterToggle || !filterContent || !filterChevron) return;
   
-  // Set initial state - expanded by default
-  let expanded = true;
+  // Set initial state - collapsed by default
+  let expanded = false;
+  filterContent.style.maxHeight = '0px';
+  filterChevron.classList.add('rotate-180');
   
   filterToggle.addEventListener('click', function() {
     expanded = !expanded;
