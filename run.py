@@ -3,6 +3,10 @@ from app import create_app
 from app.models import db
 from app.config import DevelopmentConfig, ProductionConfig, TestingConfig
 
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
 # Change this to the appropriate config for the environment you're running in
 # Choose from DevelopmentConfig, ProductionConfig, or TestingConfig
 config_map = {

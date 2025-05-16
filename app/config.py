@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 # Note Headless Toggle refers to the use of a headless browser for scraping.
 
