@@ -1,5 +1,7 @@
 import os
 
+# Note Headless Toggle refers to the use of a headless browser for scraping.
+
 # Base configuration with default settings.
 class Config:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///careerlink.db'
