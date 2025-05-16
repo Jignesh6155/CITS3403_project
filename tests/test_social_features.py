@@ -17,8 +17,8 @@ class TestSocialFeatures(FlaskTestBase):
     def setUp(self):
         super().setUp()
         # Create test users
-        self.user1 = User(name='Rishi', email='rishwanthk@yahoo.com', password='Krr3524')
-        self.user2 = User(name='Aadrian', email='aadrian@example.com', password='Adbv1234')
+        self.user1 = User(name='Alice', email='alice@example.com', password='alicepass')
+        self.user2 = User(name='Bob', email='bob@example.com', password='bobpass')
         db.session.add_all([self.user1, self.user2])
         db.session.commit()
         
@@ -296,9 +296,9 @@ class TestFriendRequestsEdgeCases(FlaskTestBase):
     def setUp(self):
         super().setUp()
         # Create test users
-        self.user1 = User(name='Ab', email='a@b.com', password='efgpass')
-        self.user2 = User(name='Bc', email='b@c.com', password='hijpass')
-        self.user3 = User(name='Ca', email='c@a.com', password='klmpass')
+        self.user1 = User(name='Alice', email='alice@example.com', password='alicepass')
+        self.user2 = User(name='Bob', email='bob@example.com', password='bobpass')
+        self.user3 = User(name='Charlie', email='charlie@example.com', password='charliepass')
         db.session.add_all([self.user1, self.user2, self.user3])
         db.session.commit()
 
@@ -397,8 +397,8 @@ class TestSharingEdgeCases(FlaskTestBase):
     def setUp(self):
         super().setUp()
         # Create test users
-        self.user1 = User(name='Krish', email='krish@email.com', password='share')
-        self.user2 = User(name='Vanda', email='vanda@gmail.com', password='sharetoo')
+        self.user1 = User(name='Alice', email='alice@example.com', password='alicepass')
+        self.user2 = User(name='Bob', email='bob@example.com', password='bobpass')
         db.session.add_all([self.user1, self.user2])
         db.session.commit()
         
@@ -521,7 +521,7 @@ class TestAccountSettingsEdgeCases(FlaskTestBase):
     def setUp(self):
         super().setUp()
         # Create test user
-        self.user = User(name='AliceBob', email='alicebob@example.com', password='alicepassbob')
+        self.user = User(name='Alice', email='alice@example.com', password='alicepass')
         db.session.add(self.user)
         db.session.commit()
 
