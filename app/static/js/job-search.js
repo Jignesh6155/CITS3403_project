@@ -1,11 +1,22 @@
-// Global variables and constants
-const PAGE_SIZE = 10;
-let currentPage = 1;
-let hasMore = true;
-let jobs = [];
-let isScrapingActive = false;
+/**
+ * Job Search Module
+ * 
+ * Comprehensive functionality for searching and saving job listings.
+ * Handles API integration, real-time updates via SSE (Server-Sent Events),
+ * filtering, and user interface interactions.
+ */
 
-// Add these style classes at the start of your script
+// Global constants and state variables
+const PAGE_SIZE = 10;                    // Number of jobs to fetch per page
+let currentPage = 1;                     // Current page of job results
+let hasMore = true;                      // Whether more results are available
+let jobs = [];                           // Cached job results
+let isScrapingActive = false;            // Flag for active scraping operation
+
+/**
+ * Style configuration for filter tags and UI elements
+ * Organizes color schemes by filter type for consistent styling
+ */
 const FILTER_STYLES = {
   location: {
     active: 'bg-blue-50 text-blue-800 border-blue-300',
@@ -21,6 +32,13 @@ const FILTER_STYLES = {
   }
 };
 
+/**
+ * Sets a select dropdown value by text or value
+ * Allows tag-based filtering to populate the filter dropdowns
+ * 
+ * @param {string} selectId - The data-type attribute of the select element
+ * @param {string} value - The value to select in the dropdown
+ */
 function setSelectValue(selectId, value) {
   const select = document.querySelector(`select[data-type="${selectId}"]`);
   if (select) {
@@ -36,7 +54,14 @@ function setSelectValue(selectId, value) {
   }
 }
 
+/**
+ * Saves a job to the user's tracker
+ * Sends job data to the backend via AJAX
+ * 
+ * @param {Object} jobData - The job data to save
+ */
 function saveJob(jobData) {
+  // Prepare the payload
   const payload = {
     title: jobData.title,
     company: jobData.company,
@@ -45,15 +70,23 @@ function saveJob(jobData) {
     closing_date: jobData.closing_date || '',
     status: 'Saved',
   };
+  
+  // Add scraped_job_id if available
   if (jobData.id) payload.scraped_job_id = jobData.id;
+  
+  // Find button that triggered save (if available)
   let btn = null;
   if (event && event.target && event.target.classList.contains('save-job-btn')) {
     btn = event.target;
     btn.disabled = true;
     btn.innerHTML = '<span class="loader mr-2"></span>Saving...';
   }
+  
+  // Get CSRF token for security
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
   const CSRF = csrfMeta ? csrfMeta.content : '';
+  
+  // Send save request
   fetch('/add-application', {
     method: 'POST',
     headers: {
@@ -80,6 +113,7 @@ function saveJob(jobData) {
   })
   .then(data => {
     if (data.success) {
+      // Update button state on success
       if (btn) {
         btn.innerHTML = 'Saved!';
         btn.classList.remove('bg-white', 'text-indigo-600', 'hover:bg-indigo-50');
@@ -87,6 +121,7 @@ function saveJob(jobData) {
       }
       showToast('Job saved successfully!', 'success');
     } else {
+      // Reset button on error
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = 'Save Job';
@@ -95,6 +130,7 @@ function saveJob(jobData) {
     }
   })
   .catch(error => {
+    // Reset button and show error
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = 'Save Job';
@@ -104,11 +140,19 @@ function saveJob(jobData) {
   });
 }
 
+/**
+ * Shows a toast notification to the user
+ * 
+ * @param {string} message - Message to display
+ * @param {string} type - 'success' or 'error'
+ */
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-opacity duration-300`;
   toast.textContent = message;
   document.body.appendChild(toast);
+  
+  // Auto-hide toast after delay
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
@@ -116,6 +160,7 @@ function showToast(message, type = 'info') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Cache DOM elements
   const searchInput = document.querySelector('input[placeholder="Search for roles, companies, or locations"]');
   const searchButton = document.getElementById('start-scraping-btn');
   const scrapingLoader = document.getElementById('scraping-loader');
@@ -124,12 +169,21 @@ document.addEventListener('DOMContentLoaded', function() {
   const categorySelect = document.querySelectorAll('select')[2];
   const jobsList = document.getElementById('scraped-jobs-list');
   const jobsWindow = document.getElementById('scraped-jobs-window');
+  
+  // Add data-type attributes and styles to select elements
   locationSelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.location.hover}`;
   typeSelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.jobtype.hover}`;
   categorySelect.className = `border rounded-md px-3 py-2 ${FILTER_STYLES.category.hover}`;
   locationSelect.setAttribute('data-type', 'location');
   typeSelect.setAttribute('data-type', 'jobtype');
   categorySelect.setAttribute('data-type', 'category');
+  
+  /**
+   * Updates the visual style of a filter dropdown based on selection
+   * 
+   * @param {HTMLElement} select - The select element
+   * @param {string} type - Filter type ('location', 'jobtype', 'category')
+   */
   function updateFilterStyle(select, type) {
     const styles = FILTER_STYLES[type];
     if (select.value && select.value !== select.options[0].text) {
@@ -138,13 +192,30 @@ document.addEventListener('DOMContentLoaded', function() {
       select.className = `border rounded-md px-3 py-2 ${styles.hover}`;
     }
   }
+  
+  /**
+   * Gets the value of a filter, respecting the default "All" option
+   * 
+   * @param {HTMLElement} select - The select element
+   * @param {string} defaultText - Text for the default option
+   * @returns {string} The filter value or empty string if default selected
+   */
   function getFilterValue(select, defaultText) {
     const val = select.value;
     return (val && val !== select.options[0].text) ? val : '';
   }
+  
+  /**
+   * Renders job tag badges with click handlers
+   * 
+   * @param {Object} tags - Job tags (location, jobtype, category)
+   * @returns {string} HTML for the tag badges
+   */
   function renderJobTags(tags) {
     if (!tags) return '';
     const tagElements = [];
+    
+    // Location tag
     if (tags.location) {
       tagElements.push(`
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200" 
@@ -157,6 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
       `);
     }
+    
+    // Job type tag
     if (tags.jobtype) {
       tagElements.push(`
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 cursor-pointer hover:bg-green-200"
@@ -168,6 +241,8 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
       `);
     }
+    
+    // Category tag
     if (tags.category) {
       tagElements.push(`
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 cursor-pointer hover:bg-purple-200"
@@ -179,21 +254,32 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
       `);
     }
+    
     return tagElements.length ? `
       <div class="flex flex-wrap gap-2 mt-2">
         ${tagElements.join('')}
       </div>
     ` : '';
   }
+  
+  /**
+   * Renders a list of jobs to the job list container
+   * 
+   * @param {Array} jobsArr - Array of job objects
+   * @param {boolean} append - Whether to append or replace existing jobs
+   */
   function renderJobs(jobsArr, append = false) {
     if (!append) jobsList.innerHTML = '';
     if (jobsArr.length === 0 && !append) {
       jobsList.innerHTML = '<li class="text-gray-400">No jobs found.</li>';
       return;
     }
+    
     jobsArr.forEach(job => {
       const li = document.createElement('li');
       li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
+      
+      // Format closing information if available
       let closingHtml = '';
       if (job.closing_in || job.closing_date) {
         closingHtml = `
@@ -204,6 +290,8 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         `;
       }
+      
+      // Build job card HTML
       li.innerHTML = `
         <div class="flex justify-between items-center">
           <span class="font-semibold truncate max-w-[60%] block">${job.title}</span>
@@ -223,14 +311,26 @@ document.addEventListener('DOMContentLoaded', function() {
         ${renderJobTags(job.tags)}
         <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
       `;
+      
+      // Add event listener to save button
       const saveButton = li.querySelector('.save-job-btn');
       saveButton.addEventListener('click', () => saveJob(job));
+      
+      // Add to DOM
       jobsList.appendChild(li);
     });
   }
+  
+  /**
+   * Adds a new job to the top of the list (used for live scraping)
+   * 
+   * @param {Object} job - Job object to add
+   */
   function addJobLive(job) {
     const li = document.createElement('li');
     li.className = 'bg-white border border-indigo-100 p-4 rounded-md shadow-sm scraped-job-item';
+    
+    // Format closing information if available
     let closingHtml = '';
     if (job.closing_in || job.closing_date) {
       closingHtml = `
@@ -241,6 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       `;
     }
+    
+    // Build job card HTML (same as renderJobs)
     li.innerHTML = `
       <div class="flex justify-between items-center">
         <span class="font-semibold truncate max-w-[60%] block">${job.title}</span>
@@ -260,10 +362,20 @@ document.addEventListener('DOMContentLoaded', function() {
       ${renderJobTags(job.tags)}
       <a href="${job.link}" target="_blank" class="text-indigo-600 hover:underline text-xs mt-2 inline-block">View Job</a>
     `;
+    
+    // Add event listener to save button
     const saveButton = li.querySelector('.save-job-btn');
     saveButton.addEventListener('click', () => saveJob(job));
+    
+    // Insert at top of list
     jobsList.insertBefore(li, jobsList.firstChild);
   }
+  
+  /**
+   * Fetches job listings from the API
+   * 
+   * @param {boolean} reset - Whether to reset cached jobs and pagination
+   */
   function fetchJobs(reset = true) {
     if (reset) {
       currentPage = 1;
@@ -271,6 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
       hasMore = true;
       jobsList.innerHTML = '<li class="text-gray-400">Loading...</li>';
     }
+    
+    // Build query parameters
     const params = new URLSearchParams({
       search: searchInput.value.trim(),
       location: getFilterValue(locationSelect, 'Location'),
@@ -279,7 +393,10 @@ document.addEventListener('DOMContentLoaded', function() {
       offset: (currentPage - 1) * PAGE_SIZE,
       limit: PAGE_SIZE
     });
+    
     console.log('Fetching jobs with params:', params.toString());
+    
+    // Make API request
     fetch(`/api/scraped-jobs?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -288,8 +405,10 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(data => {
         console.log('Received jobs data:', data);
         hasMore = data.has_more;
+        
         if (reset) {
           jobs = data.jobs.slice();
+          // Sort by closing date (soonest first)
           jobs.sort((a, b) => {
             const aDate = a.closing_date ? new Date(a.closing_date) : null;
             const bDate = b.closing_date ? new Date(b.closing_date) : null;
@@ -301,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
           renderJobs(jobs);
         } else {
           jobs = jobs.concat(data.jobs);
+          // Sort by closing date (soonest first)
           jobs.sort((a, b) => {
             const aDate = a.closing_date ? new Date(a.closing_date) : null;
             const bDate = b.closing_date ? new Date(b.closing_date) : null;
@@ -317,17 +437,29 @@ document.addEventListener('DOMContentLoaded', function() {
         jobsList.innerHTML = '<li class="text-red-400">Failed to load jobs. Please try again.</li>';
       });
   }
+  
+  // Set up event listeners
+  
+  // Search input triggers fetch
   searchInput.addEventListener('input', () => fetchJobs());
+  
+  // Search button starts web scraping
   searchButton.addEventListener('click', function(e) {
     e.preventDefault();
     if (isScrapingActive) return;
+    
+    // Get filter values
     const jobtype = getFilterValue(typeSelect, 'Opportunity Type').toLowerCase() || 'internships';
     const discipline = getFilterValue(categorySelect, 'Category').toLowerCase();
     const location = getFilterValue(locationSelect, 'Location').toLowerCase();
     const keyword = searchInput.value.trim();
+    
+    // Show loading indicator
     scrapingLoader.classList.remove('hidden');
     isScrapingActive = true;
     jobsList.innerHTML = '<li class="text-gray-400">Starting new search...</li>';
+    
+    // Start scraping job
     fetch('/api/start-scraping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -344,37 +476,51 @@ document.addEventListener('DOMContentLoaded', function() {
         jobsList.innerHTML = '<li class="text-red-400">Failed to start search. Please try again.</li>';
       });
   });
+  
+  // Filter dropdowns trigger fetch and style updates
   locationSelect.addEventListener('change', () => {
     updateFilterStyle(locationSelect, 'location');
     fetchJobs();
   });
+  
   typeSelect.addEventListener('change', () => {
     updateFilterStyle(typeSelect, 'jobtype');
     fetchJobs();
   });
+  
   categorySelect.addEventListener('change', () => {
     updateFilterStyle(categorySelect, 'category');
     fetchJobs();
   });
+  
+  // Infinite scroll for job window
   jobsWindow.addEventListener('scroll', function() {
     if (jobsWindow.scrollTop + jobsWindow.clientHeight >= jobsWindow.scrollHeight - 50) {
+      // Near bottom of scroll area
       if (hasMore && !isScrapingActive) {
         currentPage++;
         fetchJobs(false);
       }
     }
   });
+  
+  // Server-Sent Events (SSE) setup for live job updates
   if (!!window.EventSource) {
     console.log('Opening SSE connection to /api/scraping-stream');
     const sse = new EventSource('/api/scraping-stream');
+    
+    // Handle incoming SSE messages
     sse.onmessage = function(event) {
       console.log('SSE job received:', event.data);
       try {
         const data = JSON.parse(event.data);
+        
+        // Handle different message types
         if (data.type === 'ping') {
           console.log('Received ping from server');
           return;
         }
+        
         if (data.status === 'complete') {
           console.log('Scraping complete, hiding loader');
           scrapingLoader.classList.add('hidden');
@@ -382,25 +528,35 @@ document.addEventListener('DOMContentLoaded', function() {
           fetchJobs();
           return;
         }
+        
+        // Regular job update - add to list
         addJobLive(data);
       } catch (error) {
         console.error('Error processing SSE message:', error);
       }
     };
+    
+    // Handle SSE errors
     sse.onerror = function(error) {
       console.error('SSE connection error:', error);
       scrapingLoader.classList.add('hidden');
       isScrapingActive = false;
     };
   }
+  
+  // Resume file upload functionality
   const dropArea = document.getElementById('resume-drop-area');
   const fileInput = document.getElementById('resume-input');
   const fileNameSpan = document.getElementById('resume-filename');
+  
   if (dropArea && fileInput) {
+    // Click anywhere in drop area to trigger file input
     dropArea.addEventListener('click', function(e) {
       if (e.target === fileInput) return;
       fileInput.click();
     });
+    
+    // Update filename display when file selected
     fileInput.addEventListener('change', function() {
       if (fileInput.files.length > 0) {
         fileNameSpan.textContent = fileInput.files[0].name;
@@ -408,6 +564,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fileNameSpan.textContent = '';
       }
     });
+    
+    // Handle drag enter/over events
     ['dragenter', 'dragover'].forEach(eventName => {
       dropArea.addEventListener(eventName, e => {
         e.preventDefault();
@@ -415,6 +573,8 @@ document.addEventListener('DOMContentLoaded', function() {
         dropArea.classList.add('border-indigo-400', 'bg-indigo-50');
       });
     });
+    
+    // Handle drag leave/drop events
     ['dragleave', 'drop'].forEach(eventName => {
       dropArea.addEventListener(eventName, e => {
         e.preventDefault();
@@ -422,6 +582,8 @@ document.addEventListener('DOMContentLoaded', function() {
         dropArea.classList.remove('border-indigo-400', 'bg-indigo-50');
       });
     });
+    
+    // Handle file drop
     dropArea.addEventListener('drop', e => {
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         fileInput.files = e.dataTransfer.files;
@@ -429,20 +591,35 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+  
+  // Reset filters button
   const resetFiltersBtn = document.getElementById('reset-filters');
+  
+  /**
+   * Resets all filter inputs to their default values
+   */
   function resetFilters() {
     locationSelect.selectedIndex = 0;
     typeSelect.selectedIndex = 0;
     categorySelect.selectedIndex = 0;
     searchInput.value = '';
+    
+    // Update filter styles
     updateFilterStyle(locationSelect, 'location');
     updateFilterStyle(typeSelect, 'jobtype');
     updateFilterStyle(categorySelect, 'category');
+    
+    // Fetch with reset filters
     fetchJobs();
   }
+  
   resetFiltersBtn.addEventListener('click', resetFilters);
+  
+  // Initial setup
   updateFilterStyle(locationSelect, 'location');
   updateFilterStyle(typeSelect, 'jobtype');
   updateFilterStyle(categorySelect, 'category');
+  
+  // Load initial jobs
   fetchJobs();
-}); 
+});
