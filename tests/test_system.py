@@ -1,3 +1,11 @@
+"""
+System test module using Selenium for Flask application.
+
+This module implements end-to-end system tests using Selenium WebDriver
+to simulate real user interactions with the application in a browser.
+It verifies complete user flows including registration, login, and navigation.
+"""
+
 import unittest
 import threading
 import time
@@ -28,6 +36,14 @@ class SystemTestCase(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
+        """
+        Set up test environment once before all test methods.
+        
+        This method:
+        1. Creates and configures the Flask application with an in-memory database
+        2. Starts the Flask server in a separate thread
+        3. Sets up the Selenium WebDriver (Chrome in headless mode)
+        """
         # Start Flask app in a background thread
         cls.app = create_app(TestingConfig)
         cls.app.config['LIVESERVER_PORT'] = 5002
@@ -55,6 +71,14 @@ class SystemTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """
+        Set up test environment once before all test methods.
+        
+        This method:
+        1. Creates and configures the Flask application with an in-memory database
+        2. Starts the Flask server in a separate thread
+        3. Sets up the Selenium WebDriver (Chrome in headless mode)
+        """
         cls.driver.quit()
         # Flask server will exit when main thread exits
         db.session.remove()
@@ -63,6 +87,12 @@ class SystemTestCase(unittest.TestCase):
 
 
     def test_signup_and_dashboard(self):
+        """
+        Test user signup flow and redirect to dashboard.
+        
+        Simulates a new user signing up and verifies that they are
+        redirected to the dashboard after successful registration.
+        """
         self.driver.get(f'{self.base_url}/')
         # Fill signup form and submit
         self.driver.find_element(By.NAME, 'name').send_keys('selenium2')
@@ -73,6 +103,12 @@ class SystemTestCase(unittest.TestCase):
         self.assertIn('Welcome', self.driver.page_source)
 
     def test_signin_and_logout(self):
+        """
+        Test user signin and logout flow.
+        
+        Simulates a user signing in with existing credentials and verifies
+        successful authentication and dashboard access.
+        """
         self.driver.get(f'{self.base_url}/')
         # Ensure the login form is visible
         self.driver.execute_script("showLogin();")
@@ -85,6 +121,12 @@ class SystemTestCase(unittest.TestCase):
 
 
     def test_job_search_requires_login(self):
+        """
+        Test that job search page requires authentication.
+        
+        Verifies that unauthenticated users are redirected to the login page
+        when attempting to access the job search page.
+        """
         self.driver.get(f'{self.base_url}/job-search')
         # Should redirect to home/login
         self.assertIn('CareerLink', self.driver.page_source)
