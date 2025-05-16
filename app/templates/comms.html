@@ -4,10 +4,11 @@
 {% block title %}Friends{% endblock %}
 
 {% block content %}
+<!-- ================== HEADER ================== -->
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
   <h1 class="text-xl font-semibold text-indigo-900 flex items-center gap-2">
     Friends
-    <!-- Help Icon with Tooltip -->
+    <!-- Help Icon with Tooltip for Managing Friends Information -->
     <div class="relative group">
       <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
       <div class="absolute top-7 left-0 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
@@ -20,12 +21,16 @@
   </h1>
 </header>
 
-<!-- Flash Messages -->
+<!-- ================== FLASH MESSAGES ================== -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <div class="px-6 py-2">
       {% for category, message in messages %}
-        <div class="alert alert-{{ category }} bg-{{ 'red' if category == 'error' else 'green' }}-100 border border-{{ 'red' if category == 'error' else 'green' }}-400 text-{{ 'red' if category == 'error' else 'green' }}-700 px-4 py-3 rounded relative mb-2" role="alert">
+        <!-- Alert box with dynamic color based on category -->
+        <div class="alert alert-{{ category }} bg-{{ 'red' if category == 'error' else 'green' }}-100 
+                    border border-{{ 'red' if category == 'error' else 'green' }}-400 
+                    text-{{ 'red' if category == 'error' else 'green' }}-700 
+                    px-4 py-3 rounded relative mb-2" role="alert">
           <span class="block sm:inline">{{ message }}</span>
         </div>
       {% endfor %}
@@ -33,37 +38,51 @@
   {% endif %}
 {% endwith %}
 
+<!-- ================== MAIN CONTENT AREA ================== -->
 <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden flex flex-col">
-  <!-- Friends Management Component -->
+  <!-- Friends List Section -->
   {% include 'friends-list.html' %}
 
-  <!-- Leaderboard Component -->
+  <!-- Leaderboard Section -->
   {% include 'leaderboard.html' %}
 
-  <!-- Shared Applications Component -->
+  <!-- Shared Applications Section -->
   {% include 'shared-app.html' %}
 </main>
 
-<!-- SHARE MODAL -->
+<!-- ================== SHARE APPLICATION MODAL ================== -->
 <div id="shareModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
   <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
-    <button onclick="closeShareModal()" class="absolute top-2 right-3 text-gray-500 hover:text-black text-xl font-bold">&times;</button>
+    <!-- Close Button for Modal -->
+    <button onclick="closeShareModal()" 
+            class="absolute top-2 right-3 text-gray-500 hover:text-black text-xl font-bold">&times;
+    </button>
+
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Share Application</h2>
-    
-    <!-- Search input for finding friends -->
+
+    <!-- Friend Search Input -->
     <div class="relative mb-4">
-      <input type="text" id="share-friend-search" placeholder="Search friends..." class="w-full border rounded px-3 py-2 text-sm mb-2">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      <input type="text" id="share-friend-search" placeholder="Search friends..." 
+             class="w-full border rounded px-3 py-2 text-sm mb-2">
+      <!-- Search Icon -->
+      <svg xmlns="http://www.w3.org/2000/svg" 
+           class="h-5 w-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+           fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     </div>
-    
+
+    <!-- Share Application Form -->
     <form method="POST" id="shareForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Friends List for Selection -->
       <div class="max-h-60 overflow-y-auto mb-4 border rounded">
         <ul id="share-friends-list" class="divide-y divide-gray-200">
           {% for friend in user.friends %}
-            <li class="py-2 px-3 hover:bg-gray-50 cursor-pointer share-friend-item" data-id="{{ friend.id }}" data-name="{{ friend.name|lower }}">
+            <li class="py-2 px-3 hover:bg-gray-50 cursor-pointer share-friend-item" 
+                data-id="{{ friend.id }}" data-name="{{ friend.name|lower }}">
               <label class="flex items-center cursor-pointer w-full">
                 <input type="radio" name="friend_id" value="{{ friend.id }}" class="mr-2">
                 <span>{{ friend.name }}</span>
@@ -75,7 +94,12 @@
           {% endif %}
         </ul>
       </div>
-      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded w-full disabled:opacity-50 disabled:cursor-not-allowed" id="share-submit-btn">
+
+      <!-- Submit Share Button -->
+      <button type="submit" 
+              class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded w-full 
+                     disabled:opacity-50 disabled:cursor-not-allowed" 
+              id="share-submit-btn">
         Share Application
       </button>
     </form>
@@ -83,6 +107,8 @@
 </div>
 {% endblock %}
 
+<!-- ================== SCRIPTS BLOCK ================== -->
 {% block scripts %}
+<!-- Communication-Specific JavaScript -->
 <script src="{{ url_for('static', filename='js/comms.js') }}"></script>
 {% endblock %}

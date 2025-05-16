@@ -2,26 +2,29 @@
 {% set active_page = "analytics" %}
 {% block title %}Career Analytics Arena{% endblock %}
 {% block content %}
+
+<!-- ================== HEADER SECTION ================== -->
 <header class="px-6 py-4 bg-indigo-100 border-b border-gray-200 flex justify-between items-center">
   <div class="flex items-center gap-2">
     <h1 class="text-xl font-semibold text-indigo-900">Career Analytics Arena</h1>
-    <!-- Help Icon with Tooltip -->
+    <!-- Help Icon with Tooltip for explaining analytics usage -->
     <div class="relative group">
       <i data-lucide="info" class="w-5 h-5 text-gray-500 cursor-pointer hover:text-indigo-600 transition"></i>
+      <!-- Tooltip Content -->
       <div class="absolute top-7 left-0 hidden group-hover:block bg-white border border-gray-300 text-sm text-gray-700 shadow-lg rounded-md p-3 w-72 z-50">
         <strong class="block mb-1 text-indigo-700">How to Read Analytics</strong>
-        Track your application stats, weekly SQLALCHEMY_DATABASE_URIactivity, and success trends.<br><br>
+        Track your application stats, weekly activity, and success trends.<br><br>
         Use this data to optimize where and how you're applying.<br><br>
         Hover over charts for details. 🎯 Aim to improve your success rate each week!
       </div>
     </div>
   </div>
-
 </header>
 
-
+<!-- ================== MAIN CONTENT ================== -->
 <main class="flex-1 p-6 space-y-6 overflow-y-auto">
-  <!-- KPI SUMMARY -->
+
+  <!-- ===== KPI SUMMARY SECTION ===== -->
   <section class="bg-white border border-gray-200 p-6 shadow rounded-lg">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">📊 Your Career Stats</h2>
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
@@ -32,6 +35,7 @@
         ('Avg. Response Time', avg_response ~ ' days' if avg_response else 'N/A', '⏱️', 'blue'),
         ('Success Rate', success_rate ~ '%', '🏆', 'purple')
       ] %}
+      <!-- KPI Card -->
       <div class="bg-{{ color }}-50 p-4 rounded shadow text-center">
         <p class="text-xs text-gray-500 mb-1">{{ icon }} {{ label }}</p>
         <p class="text-xl font-bold text-{{ color }}-700">{{ value }}</p>
@@ -43,28 +47,29 @@
     </p>
   </section>
 
-  <!-- ── ROW 1 ───────────────────────────────────────── -->
+  <!-- ===== ROW 1: ANALYTICS CHARTS ===== -->
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Status Donut -->
+    
+    <!-- Application Status Donut Chart -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">📂 Application Status Breakdown</h2>
       <canvas id="statusDonut" class="w-full h-32"></canvas>
       <p class="text-xs text-gray-500 mt-2">Tip: aim to move more apps into "Interviewing" &amp; "Offer"!</p>
     </div>
 
-    <!-- Weekly Activity -->
+    <!-- Weekly Activity Bar Chart with Summary Cards -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">📅 Weekly Activity</h2>
       <canvas id="weeklyBar" class="w-full h-32"></canvas>
-      <!-- four mini-cards -->
       <div class="grid grid-cols-2 gap-2 mt-4">
         {% set daily_avg = (weekly_apps|sum)/7 %}
-        {% for heading,val in [
-          ('Apps This Week',          weekly_apps|sum),
-          ('Interviews This Week',    weekly_int|sum),
-          ('Offers This Week',        weekly_off|sum),
-          ('Avg Apps / Day',          daily_avg|round(1))
+        {% for heading, val in [
+          ('Apps This Week', weekly_apps|sum),
+          ('Interviews This Week', weekly_int|sum),
+          ('Offers This Week', weekly_off|sum),
+          ('Avg Apps / Day', daily_avg|round(1))
         ] %}
+        <!-- Summary Card -->
         <div class="border rounded p-2 text-center">
           <p class="text-[11px] text-gray-500">{{ heading }}</p>
           <p class="font-semibold text-indigo-700 text-lg">{{ val }}</p>
@@ -73,7 +78,7 @@
       </div>
     </div>
 
-    <!-- Offers vs Rejections -->
+    <!-- Offers vs Rejections Chart with Summary -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">🎯 Offers vs Rejections</h2>
       <canvas id="outcomeBar" class="w-full h-32"></canvas>
@@ -84,15 +89,19 @@
         </div>
         <div class="border rounded p-2 text-center">
           <p class="text-[11px] text-gray-500">Total Rejections</p>
-          <p class="font-semibold text-rose-600 text-lg">{{ outcome_counts[1] if outcome_counts|length>1 else 0 }}</p>
+          <p class="font-semibold text-rose-600 text-lg">
+            {{ outcome_counts[1] if outcome_counts|length > 1 else 0 }}
+          </p>
         </div>
       </div>
     </div>
+
   </section>
 
-  <!-- ── ROW 2 ───────────────────────────────────────── -->
+  <!-- ===== ROW 2: ADVANCED ANALYTICS ===== -->
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Success Trends -->
+
+    <!-- Success Trends Line Chart -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">📈 Success Trends (Last 7 Days)</h2>
       <canvas id="successLine" class="w-full h-32"></canvas>
@@ -110,11 +119,10 @@
       </div>
     </div>
 
-    <!-- Job-Type Distribution -->
+    <!-- Job-Type Distribution Chart -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">📖 Job-Type Distribution</h2>
       <canvas id="typeBar" class="w-full h-32"></canvas>
-      <!-- REPLACED zip WITH range() -->
       <div class="grid grid-cols-2 gap-2 mt-4">
         {% for i in range(type_labels|length) %}
         {% if i < 4 %}
@@ -127,15 +135,19 @@
       </div>
     </div>
 
-    <!-- Success Gauge -->
+    <!-- Success Rate Gauge Chart -->
     <div class="bg-white border p-4 shadow">
       <h2 class="text-sm font-semibold mb-2">🏆 Success-Rate Gauge</h2>
       <canvas id="successGauge" class="w-full h-32"></canvas>
-      <p class="text-xs text-gray-500 mt-2 text-center">Target next milestone: 20&nbsp;% success</p>
+      <p class="text-xs text-gray-500 mt-2 text-center">
+        Target next milestone: 20&nbsp;% success
+      </p>
     </div>
+
   </section>
 </main>
 
+<!-- ================== FOOTER LINKS ================== -->
 {% for link in [
     ('main.dashboard', 'Dashboard'),
     ('main.job_search', 'Job Search'),
@@ -146,8 +158,12 @@
 {% endfor %}
 {% endblock %}
 
+<!-- ================== SCRIPTS ================== -->
 {% block scripts %}
+<!-- Load Chart.js for rendering charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Inject Data for Charts -->
 <script type="application/json" id="status-labels">{{ status_labels | tojson }}</script>
 <script type="application/json" id="status-counts">{{ status_counts | tojson }}</script>
 <script type="application/json" id="weekly-labels">{{ weekly_labels | tojson }}</script>
@@ -159,11 +175,15 @@
 <script type="application/json" id="type-labels">{{ type_labels | tojson }}</script>
 <script type="application/json" id="type-counts">{{ type_counts | tojson }}</script>
 <script type="application/json" id="success-rate">{{ [success_rate, 100 - success_rate] | tojson }}</script>
+
+<!-- Chart Initialization -->
 <script>
+// Chart color presets
 const indigo='rgba(99,102,241,1)', indigoT='rgba(99,102,241,.15)';
 const green ='rgba(34,197,94,1)',  greenT ='rgba(34,197,94,.15)';
 const yellow='rgba(234,179,8,1)',  yellowT='rgba(234,179,8,.15)';
 
+// Parse JSON data for charts
 const statusLabels = JSON.parse(document.getElementById('status-labels').textContent);
 const statusCounts = JSON.parse(document.getElementById('status-counts').textContent);
 const weeklyLabels = JSON.parse(document.getElementById('weekly-labels').textContent);
@@ -176,50 +196,103 @@ const typeLabels = JSON.parse(document.getElementById('type-labels').textContent
 const typeCounts = JSON.parse(document.getElementById('type-counts').textContent);
 const successRateArr = JSON.parse(document.getElementById('success-rate').textContent);
 
-/* STATUS DONUT */
-new Chart(statusDonut,{type:'doughnut',data:{
-  labels: statusLabels,
-  datasets:[{data: statusCounts,
-             backgroundColor:['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899','#f97316','#22d3ee']}]
-},options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom'}}}});
+/* Initialize Status Donut Chart */
+new Chart(statusDonut, {
+  type: 'doughnut',
+  data: {
+    labels: statusLabels,
+    datasets: [{
+      data: statusCounts,
+      backgroundColor: ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899','#f97316','#22d3ee']
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '60%',
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
 
-/* WEEKLY BAR */
-new Chart(weeklyBar,{type:'bar',data:{
-  labels: weeklyLabels,
-  datasets:[
-    {label:'Apps',       data: weeklyApps,backgroundColor:indigo},
-    {label:'Interviews', data: weeklyInt,backgroundColor:green},
-    {label:'Offers',     data: weeklyOff,backgroundColor:yellow}
-  ]
-},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
+/* Initialize Weekly Activity Bar Chart */
+new Chart(weeklyBar, {
+  type: 'bar',
+  data: {
+    labels: weeklyLabels,
+    datasets: [
+      { label: 'Apps', data: weeklyApps, backgroundColor: indigo },
+      { label: 'Interviews', data: weeklyInt, backgroundColor: green },
+      { label: 'Offers', data: weeklyOff, backgroundColor: yellow }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
 
-/* OFFERS vs REJECTIONS */
-new Chart(outcomeBar,{type:'bar',data:{
-  labels: outcomeLabels,
-  datasets:[{data: outcomeCounts,backgroundColor:['#4ade80','#f87171']}]
-},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
+/* Initialize Offers vs Rejections Bar Chart */
+new Chart(outcomeBar, {
+  type: 'bar',
+  data: {
+    labels: outcomeLabels,
+    datasets: [{ data: outcomeCounts, backgroundColor: ['#4ade80', '#f87171'] }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
 
-/* SUCCESS LINE */
-new Chart(successLine,{type:'line',data:{
-  labels: weeklyLabels,
-  datasets:[
-    {label:'Apps',       data: weeklyApps,borderColor:indigo,backgroundColor:indigoT,tension:.4},
-    {label:'Interviews', data: weeklyInt,borderColor:green, backgroundColor:greenT, tension:.4},
-    {label:'Offers',     data: weeklyOff,borderColor:yellow,backgroundColor:yellowT,tension:.4}
-  ]
-},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
+/* Initialize Success Trends Line Chart */
+new Chart(successLine, {
+  type: 'line',
+  data: {
+    labels: weeklyLabels,
+    datasets: [
+      { label: 'Apps', data: weeklyApps, borderColor: indigo, backgroundColor: indigoT, tension: .4 },
+      { label: 'Interviews', data: weeklyInt, borderColor: green, backgroundColor: greenT, tension: .4 },
+      { label: 'Offers', data: weeklyOff, borderColor: yellow, backgroundColor: yellowT, tension: .4 }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
 
-/* TYPE BAR */
-new Chart(typeBar,{type:'bar',data:{
-  labels: typeLabels,
-  datasets:[{data: typeCounts,backgroundColor:'#6366f1'}]
-},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+/* Initialize Job-Type Distribution Bar Chart */
+new Chart(typeBar, {
+  type: 'bar',
+  data: {
+    labels: typeLabels,
+    datasets: [{ data: typeCounts, backgroundColor: '#6366f1' }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
 
-/* SUCCESS GAUGE */
-new Chart(successGauge,{type:'doughnut',data:{
-  labels:['Success','Remaining'],
-  datasets:[{data: successRateArr,
-             backgroundColor:['#10b981','#e5e7eb']}]
-},options:{responsive:true,cutout:'75%',plugins:{legend:{display:false}}}});
+/* Initialize Success Gauge Chart */
+new Chart(successGauge, {
+  type: 'doughnut',
+  data: {
+    labels: ['Success', 'Remaining'],
+    datasets: [{
+      data: successRateArr,
+      backgroundColor: ['#10b981', '#e5e7eb']
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '75%',
+    plugins: { legend: { display: false } }
+  }
+});
 </script>
 {% endblock %}

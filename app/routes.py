@@ -1212,31 +1212,55 @@ def update_name():
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
+
+
+# Route to handle password updates for authenticated users
 @main_bp.route('/update-password', methods=['POST'])
-@login_required
+@login_required  # Ensure that only logged-in users can access this route
 def update_password():
+    # Retrieve the current authenticated user
     user = current_user
+
+    # Extract form data for current and new passwords
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
+
+    # Validate that both fields are provided
     if not current_password or not new_password:
         return jsonify({"success": False, "message": "All fields are required"}), 400
+
+    # Verify that the provided current password matches the stored password hash
     if not check_password_hash(user.password, current_password):
         return jsonify({"success": False, "message": "Current password is incorrect"}), 400
+
+    # Update the user's password with a securely hashed version of the new password
     user.password = generate_password_hash(new_password)
+
     try:
+        # Commit the password update to the database
         db.session.commit()
+
+        # Create a notification to inform the user of the successful password change
         notification = Notification(
             user_id=user.id,
             content="Your password has been updated successfully",
             type="account_update",
             is_read=False
         )
+
+        # Add and commit the notification to the database
         db.session.add(notification)
         db.session.commit()
+
+        # Return a success response to the client
         return jsonify({
             "success": True,
             "message": "Password updated successfully"
         })
+
     except Exception as e:
+        # Rollback database changes if any error occurs during the transaction
         db.session.rollback()
+
+        # Return an error response with the exception message (Consider logging this securely)
         return jsonify({"success": False, "message": str(e)}), 500
