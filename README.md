@@ -239,3 +239,21 @@ CITS3403_project/
 ├── run.py
 └── .env
 ```
+
+---
+
+---
+
+| **Requirement**              | **Implementation** |
+|------------------------------|--------------------|
+| **Introductory View**        | Provides a landing page with account creation and login (`/index`, `/signin`). After login, users are welcomed with a personalized dashboard view. |
+| **Upload Private Data**      | Users can upload resumes (PDF/DOCX) via the `/job-search` page. Uploaded files are securely processed using OpenAI’s API for keyword extraction and job suggestions. |
+| **Visualize Data**           | The `/analytics` page provides interactive data visualizations using Chart.js, showing application statistics, success rates, and trends over time. |
+| **Selectively Share Data**   | Users can add friends, send/accept friend requests, and share specific job applications through the `/comms` page, allowing selective data sharing. |
+| **Engaging Design**          | The UI is built with Tailwind CSS and Lucide icons, offering a modern, responsive design with visual feedback and hover interactions to keep users engaged. |
+| **Effective Functionality**  | Features job scraping from GradConnection, AI-driven resume analysis, application tracking, and social sharing tools, directly addressing user needs. |
+| **Intuitive Navigation**     | The app uses a dashboard-centered layout with clearly labeled navigation links, modals, tooltips, and smooth transitions for an easy-to-use experience. |
+| **Private GitHub Repository**| Project code is maintained in a GitHub repository with version control, issue tracking, and team collaboration via Git. |
+| **Comprehensive README**     | This README includes:<br>- Purpose and design explanation<br>- Group member table with UWA IDs and GitHub usernames<br>- Installation and testing instructions<br>- API documentation and project structure overview |
+
+---
