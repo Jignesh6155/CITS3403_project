@@ -256,4 +256,11 @@ CITS3403_project/
 | **Private GitHub Repository**| Project code is maintained in a GitHub repository with version control, issue tracking, and team collaboration via Git. |
 | **Comprehensive README**     | This README includes:<br>- Purpose and design explanation<br>- Group member table with UWA IDs and GitHub usernames<br>- Installation and testing instructions<br>- API documentation and project structure overview |
 
+
+Note:
+The following dummy users exist on the database:
+      { name: 'Adriaan', email: 'Adriaan@example.com', password: 'password123' },
+      { name: 'Jignesh', email: 'Jignesh@example.com', password: 'password123' },
+      { name: 'Rishi', email: 'Rishi@example.com', password: 'password123' }
+
 ---
