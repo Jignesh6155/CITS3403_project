@@ -23,7 +23,7 @@ The platform is built for the UWA CITS3403 Software Project unit 2025 Semester 1
 |----------|-----------------------|------------------|
 | 23336556 | Adriaan van der Berg  | adriaan-vdb      |
 | [TODO]   | Jignesh               | [github_username]|
-| [TODO]   | Rishi                 | [github_username]|
+| 23463452   | Rishwanth Katherapalle              | Rishi3524|
 
 ---
 
