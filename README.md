@@ -239,11 +239,3 @@ CITS3403_project/
 ├── run.py
 └── .env
 ```
-
----
-
-## Notes & Recommendations
-
-- **Chrome is required** for Selenium-based scraping.
-- The `.env` file is ignored by git for security.
-- For production, set a strong `SECRET_KEY` and use a production-ready database.

@@ -10,6 +10,7 @@ config_map = {
     "production": ProductionConfig,
     "testing": TestingConfig,
 }
+# Run the development config
 config_name = os.environ.get("APP_CONFIG", "development")
 app = create_app(config_map[config_name])
 
