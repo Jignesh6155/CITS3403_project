@@ -30,14 +30,14 @@
           <input id="job-search" type="text" placeholder="Search job title" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition-all" onkeyup="filterApplications()">
         </div>
         <select id="job-type-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition-all" onchange="filterApplications()">
-          <option value="">Filter by Job Type</option>
+          <option value="">Job Type</option>
           <option value="Internship">Internship</option>
           <option value="Graduate-Job">Graduate Job</option>
           <option value="Scholarship">Scholarship</option>
           <option value="Clerkship">Clerkship</option>
         </select>
         <select id="friend-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition-all" onchange="filterApplications()">
-          <option value="">Filter by Friend</option>
+          <option value="">Friend</option>
           {% set unique_friends = [] %}
           {% for app in shared_apps %}
             {% if app.user.name not in unique_friends %}
