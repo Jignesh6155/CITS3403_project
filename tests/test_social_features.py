@@ -2,6 +2,7 @@ from tests.base import FlaskTestBase
 from app.models import db, User, JobApplication, FriendRequest, Notification
 from datetime import datetime, timezone
 import json
+from werkzeug.security import generate_password_hash
 
 class TestSocialFeatures(FlaskTestBase):
     """
@@ -16,9 +17,17 @@ class TestSocialFeatures(FlaskTestBase):
     """
     def setUp(self):
         super().setUp()
-        # Create test users
-        self.user1 = User(name='Alice', email='alice@example.com', password='alicepass')
-        self.user2 = User(name='Bob', email='bob@example.com', password='bobpass')
+        # Create test users with hashed passwords
+        self.user1 = User(
+            name='Alice', 
+            email='alice@example.com', 
+            password=generate_password_hash('alicepass')
+        )
+        self.user2 = User(
+            name='Bob', 
+            email='bob@example.com', 
+            password=generate_password_hash('bobpass')
+        )
         db.session.add_all([self.user1, self.user2])
         db.session.commit()
         
@@ -424,10 +433,13 @@ class TestSharingEdgeCases(FlaskTestBase):
         response = self.client.post(f'/share-application/{self.job_app.id}', data={
             'friend_id': self.user2.id,
             'csrf_token': self.get_csrf_token()
-        }, follow_redirects=True)
+        })
         
-        # Check error message
-        self.assertIn(b'Friend not found', response.data)
+        # Check error message in JSON response
+        data = json.loads(response.data)
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(data['success'])
+        self.assertEqual(data['message'], 'Friend not found')
         
         # Verify no sharing relationship was created
         from sqlalchemy import text
