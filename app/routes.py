@@ -954,11 +954,13 @@ def share_application(app_id):
     user = current_user
     application = JobApplication.query.get(app_id)
     if not application or application.user_id != user.id:
-        return jsonify({"success": False, "message": "Application not found or you do not own this application"}), 404
+        flash('Application not found or you do not own this application', 'error')
+        return redirect(url_for('main.job_tracker'))
         
     friend_id = request.form.get('friend_id')
     if not friend_id:
-        return jsonify({"success": False, "message": "No friend selected"}), 400
+        flash('No friend selected', 'error')
+        return redirect(url_for('main.job_tracker'))
         
     friend = User.query.get(friend_id)
     if friend and friend in user.friends:
@@ -986,7 +988,7 @@ def share_application(app_id):
                 link=url_for('main.comms'),
                 notification_type="application_shared"
             )
-            return jsonify({"success": True, "message": f'Application shared with {friend.name}'})
+            flash(f'Application shared with {friend.name}', 'success')
         else:
             # Update existing share to active if it was archived
             if existing_share.status == 'archived':
@@ -995,11 +997,12 @@ def share_application(app_id):
                     {"user_id": friend.id, "app_id": application.id}
                 )
                 db.session.commit()
-                return jsonify({"success": True, "message": f'Application re-shared with {friend.name}'})
+                flash(f'Application re-shared with {friend.name}', 'success')
             else:
-                return jsonify({"success": False, "message": "Application already shared with this friend"}), 400
+                flash('Application already shared with this friend', 'error')
     else:
-        return jsonify({"success": False, "message": "Friend not found"}), 404
+        flash('Friend not found', 'error')
+    return redirect(url_for('main.job_tracker'))
 
 @main_bp.route("/update-job-status", methods=["POST"])
 def update_job_status():
@@ -1233,7 +1236,7 @@ def update_password():
         return jsonify({
             "success": True,
             "message": "Password updated successfully"
-        }), 200
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
