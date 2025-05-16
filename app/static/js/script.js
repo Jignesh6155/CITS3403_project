@@ -1,14 +1,34 @@
-function showLogin() {
-    document.getElementById('login-form').classList.remove('translate-x-full');
-    document.getElementById('login-form').classList.add('translate-x-0');
-  }
-  
-  function hideLogin() {
-    document.getElementById('login-form').classList.remove('translate-x-0');
-    document.getElementById('login-form').classList.add('translate-x-full');
-  }
+/**
+ * Global utility functions for the CareerLink application
+ * 
+ * This script contains general functions used across the application including:
+ * - Login form control (show/hide)
+ * - Notification handling system
+ * - Date/time formatting utilities
+ */
 
-  // Notification handling
+/**
+ * Shows the login form by animating it into view
+ * Removes the translate-x-full class and adds translate-x-0 for slide-in effect
+ */
+function showLogin() {
+  document.getElementById('login-form').classList.remove('translate-x-full');
+  document.getElementById('login-form').classList.add('translate-x-0');
+}
+
+/**
+ * Hides the login form by animating it out of view
+ * Removes the translate-x-0 class and adds translate-x-full for slide-out effect
+ */
+function hideLogin() {
+  document.getElementById('login-form').classList.remove('translate-x-0');
+  document.getElementById('login-form').classList.add('translate-x-full');
+}
+
+/**
+ * Notification system initialization
+ * Sets up event handlers for the notification dropdown and loads notifications from the API
+ */
 document.addEventListener('DOMContentLoaded', function() {
   const notificationButton = document.getElementById('notificationButton');
   if (!notificationButton) return; // Exit if not on a page with notifications
@@ -22,7 +42,10 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPage = 1;
   let hasMoreNotifications = false;
   
-  // Toggle notification dropdown
+  /**
+   * Toggle notification dropdown visibility when notification icon is clicked
+   * Also reloads notifications when opening the dropdown
+   */
   notificationButton.addEventListener('click', function() {
     notificationDropdown.classList.toggle('hidden');
     if (!notificationDropdown.classList.contains('hidden')) {
@@ -30,14 +53,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Close dropdown when clicking outside
+  /**
+   * Close notification dropdown when clicking outside
+   * Handles document-level click events to detect clicks outside the dropdown
+   */
   document.addEventListener('click', function(event) {
     if (!notificationButton.contains(event.target) && !notificationDropdown.contains(event.target)) {
       notificationDropdown.classList.add('hidden');
     }
   });
   
-  // Mark all as read
+  /**
+   * Mark all notifications as read
+   * Sends an empty notification_ids array to mark all as read
+   */
   markAllReadBtn.addEventListener('click', function() {
     fetch('/api/notifications', {
       method: 'POST',
@@ -53,7 +82,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Load more notifications
+  /**
+   * Load more notifications when clicking the "Load more" button
+   * Increments the page and appends new notifications
+   */
   loadMoreBtn.addEventListener('click', function(e) {
     e.preventDefault();
     if (hasMoreNotifications) {
@@ -61,7 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Load notifications function
+  /**
+   * Load notifications from the API
+   * @param {number} page - The page number to load
+   * @param {boolean} reset - Whether to reset the notification list or append
+   */
   function loadNotifications(page, reset) {
     currentPage = page;
     
@@ -85,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const notificationItem = document.createElement('div');
           notificationItem.className = `p-4 hover:bg-gray-50 transition ${notification.is_read ? 'opacity-60' : 'bg-indigo-50 bg-opacity-30'}`;
           
+          // Choose icon based on notification type
           let iconClass = 'user';
           if (notification.type === 'friend_request') iconClass = 'user-plus';
           else if (notification.type === 'application_shared') iconClass = 'briefcase';
@@ -125,51 +162,35 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
   
-  // Mark specific notifications as read
- function markAsRead(ids) {
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+  /**
+   * Mark specific notifications as read
+   * @param {Array} ids - Array of notification IDs to mark as read
+   */
+  function markAsRead(ids) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-  fetch('/api/notifications', {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken  // Add this line
-    },
-    body: JSON.stringify({ notification_ids: ids })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      loadNotifications(currentPage, true);
-      updateNotificationCount();
-    }
-  })
-  .catch(error => console.error('Error:', error)); // Add error handling
-}
+    fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken  // Add CSRF token for security
+      },
+      body: JSON.stringify({ notification_ids: ids })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        loadNotifications(currentPage, true);
+        updateNotificationCount();
+      }
+    })
+    .catch(error => console.error('Error:', error)); 
+  }
 
-// Also update the "Mark All as Read" button handler similarly
-markAllReadBtn.addEventListener('click', function() {
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-  fetch('/api/notifications', {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken  // Add this line
-    },
-    body: JSON.stringify({ notification_ids: [] })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      loadNotifications(1, true);
-      updateNotificationCount();
-    }
-  })
-  .catch(error => console.error('Error:', error));
-});
-  
-  // Update notification count badge
+  /**
+   * Update notification count badge in the UI
+   * Makes an API call to get the unread count and updates the badge visibility
+   */
   function updateNotificationCount() {
     fetch('/api/notifications?count_only=true')
       .then(response => response.json())
@@ -183,63 +204,68 @@ markAllReadBtn.addEventListener('click', function() {
       });
   }
   
-  // Time ago function for dates
-function timeAgo(dateStr) {
-  // Check if we received a backend formatted datetime without timezone
-  // Format: "2025-05-06 14:30:45"
-  if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
-    // Assume UTC and convert to ISO format
-    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  /**
+   * Convert a date to a human-readable "time ago" string
+   * @param {Date|string} dateStr - Date object or ISO string
+   * @returns {string} Human-readable time difference (e.g., "5 minutes ago")
+   */
+  function timeAgo(dateStr) {
+    // Check if we received a backend formatted datetime without timezone
+    // Format: "2025-05-06 14:30:45"
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+      // Assume UTC and convert to ISO format
+      dateStr = dateStr.replace(' ', 'T') + 'Z';
+    }
+    
+    // Ensure the date is properly parsed
+    const date = new Date(dateStr);
+    
+    // Validate if the date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date provided to timeAgo:', dateStr);
+      return 'unknown time ago';
+    }
+    
+    // Compare with current time
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    // For debugging - log time difference info
+    console.log('Time difference debugging:', {
+      now: now.toISOString(),
+      date: date.toISOString(),
+      differenceInSeconds: seconds
+    });
+    
+    // Negative time difference guard
+    if (seconds < 0) {
+      return 'in the future';
+    }
+    
+    // Calculate appropriate time unit
+    let interval = Math.floor(seconds / 31536000);
+    if (interval > 1) return interval + ' years ago';
+    if (interval === 1) return '1 year ago';
+    
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) return interval + ' months ago';
+    if (interval === 1) return '1 month ago';
+    
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) return interval + ' days ago';
+    if (interval === 1) return '1 day ago';
+    
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) return interval + ' hours ago';
+    if (interval === 1) return '1 hour ago';
+    
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) return interval + ' minutes ago';
+    if (interval === 1) return '1 minute ago';
+    
+    if (seconds < 10) return 'just now';
+    return Math.floor(seconds) + ' seconds ago';
   }
-  
-  // Ensure the date is properly parsed
-  const date = new Date(dateStr);
-  
-  // Validate if the date is valid
-  if (isNaN(date.getTime())) {
-    console.error('Invalid date provided to timeAgo:', dateStr);
-    return 'unknown time ago';
-  }
-  
-  // Compare with current time
-  const now = new Date();
-  const seconds = Math.floor((now - date) / 1000);
-  
-  // For debugging - log time difference info
-  console.log('Time difference debugging:', {
-    now: now.toISOString(),
-    date: date.toISOString(),
-    differenceInSeconds: seconds
-  });
-  
-  // Negative time difference guard
-  if (seconds < 0) {
-    return 'in the future';
-  }
-  
-  let interval = Math.floor(seconds / 31536000);
-  if (interval > 1) return interval + ' years ago';
-  if (interval === 1) return '1 year ago';
-  
-  interval = Math.floor(seconds / 2592000);
-  if (interval > 1) return interval + ' months ago';
-  if (interval === 1) return '1 month ago';
-  
-  interval = Math.floor(seconds / 86400);
-  if (interval > 1) return interval + ' days ago';
-  if (interval === 1) return '1 day ago';
-  
-  interval = Math.floor(seconds / 3600);
-  if (interval > 1) return interval + ' hours ago';
-  if (interval === 1) return '1 hour ago';
-  
-  interval = Math.floor(seconds / 60);
-  if (interval > 1) return interval + ' minutes ago';
-  if (interval === 1) return '1 minute ago';
-  
-  if (seconds < 10) return 'just now';
-  return Math.floor(seconds) + ' seconds ago';
-}
   
   // Initialize notification count on page load and set interval to update
   updateNotificationCount();
