@@ -1,7 +1,6 @@
 """
 Routes for the main blueprint of the application.
 All routes are registered under the 'main_bp' Blueprint.
-IMPORTANT: Do NOT use @app.route. Use @main_bp.route for all routes in this file.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, Response, stream_with_context
@@ -26,30 +25,47 @@ from werkzeug.security import generate_password_hash, check_password_hash  # For
 from flask import current_app
 from app.extensions import csrf
 
+# =============================================================================
+# In-memory Rate Limiting and Notification Utilities
+# =============================================================================
 
-# Simple in-memory rate limiting
+# Simple in-memory rate limiting dictionary
 request_counts = {}
+
 def rate_limit_check(user_id, action, max_requests=5, window_seconds=3600):
-    """Basic rate limiting"""
+    """Basic rate limiting for user actions.
+    Args:
+        user_id (int): The user's ID.
+        action (str): The action to rate limit (e.g., 'scraping').
+        max_requests (int): Maximum allowed requests in the window.
+        window_seconds (int): Time window in seconds.
+    Returns:
+        bool: True if under the limit, False if rate limit exceeded.
+    """
     key = f"{user_id}:{action}"
     now = datetime.now(timezone.utc)
-    
     if key not in request_counts:
         request_counts[key] = []
-    
-    # Clean old requests
+    # Remove timestamps outside the window
     request_counts[key] = [t for t in request_counts[key] 
                            if t > now - timedelta(seconds=window_seconds)]
-    
     # Check if over limit
     if len(request_counts[key]) >= max_requests:
         return False
-    
-    # Add current request
+    # Add current request timestamp
     request_counts[key].append(now)
     return True
+
 def create_notification(user_id, content, link=None, notification_type="general"):
-    """Create a notification for a user"""
+    """Create a notification for a user and commit to the database.
+    Args:
+        user_id (int): The recipient user's ID.
+        content (str): Notification message.
+        link (str, optional): Link associated with the notification.
+        notification_type (str): Type/category of notification.
+    Returns:
+        Notification: The created notification object.
+    """
     notification = Notification(
         user_id=user_id,
         content=content,
@@ -60,11 +76,17 @@ def create_notification(user_id, content, link=None, notification_type="general"
     db.session.add(notification)
     db.session.commit()
     return notification
-# Global variables (for testing)
-live_job_queue = queue.Queue()
-HEADLESS_TOGGLE = False  # Set to False temporarily for debugging
-SCRAPE_SIZE = 1
-# ─────────────────────────────────────────────────────────────────────────────
+
+# =============================================================================
+# Global Variables for Scraping (for testing/demo purposes)
+# =============================================================================
+live_job_queue = queue.Queue()  # Queue for streaming scraped jobs to clients
+HEADLESS_TOGGLE = False         # Toggle for headless browser scraping
+SCRAPE_SIZE = 1                 # Number of pages to scrape per request
+
+# =============================================================================
+# Background Scraper Thread
+# =============================================================================
 def background_scraper(
     app,
     user_id: int = 1,
@@ -73,23 +95,24 @@ def background_scraper(
     location: str | None = None,
     keyword: str | None = None,
 ) -> None:
-    """
-    Run GradConnection scraping in a detached thread and stream results into
-    `live_job_queue`.  All DB and Flask-config access happens *inside* an
-    app-context so `current_app`, `db`, etc. are safe to use.
+    """Run GradConnection scraping in a detached thread and stream results.
+    All DB and Flask-config access happens inside an app-context so current_app, db, etc. are safe to use.
+    Args:
+        app: Flask app instance.
+        user_id (int): User ID for whom jobs are scraped.
+        jobtype (str): Type of job to scrape.
+        discipline (str, optional): Discipline filter.
+        location (str, optional): Location filter.
+        keyword (str, optional): Keyword filter.
     """
     # IMPORTANT: do **not** touch current_app before we open the context
-    # -----------------------------------------------------------------
     with app.app_context():
-
         debug = app.config.get("DEBUG", False)
         if debug:
             print(f"[SCRAPER] starting: user={user_id} jobtype={jobtype} "
                   f"discipline={discipline} location={location} keyword={keyword}")
-
         from app.utils.scraper_GC_jobs_detailed import get_jobs_full
         from app.models import ScrapedJob   # local import – ctx is active
-
         try:
             jobs = get_jobs_full(
                 jobtype=jobtype,
@@ -101,8 +124,7 @@ def background_scraper(
             )
             if debug:
                 print(f"[SCRAPER] {len(jobs)} jobs scraped")
-
-            # clear previous search results for this (user, filter) combo
+            # Remove previous search results for this (user, filter) combo
             ScrapedJob.query.filter_by(
                 user_id=user_id,
                 tag_jobtype=jobtype,
@@ -110,11 +132,9 @@ def background_scraper(
                 tag_category=discipline,
             ).delete()
             db.session.commit()
-
             perth_tz = pytz.timezone("Australia/Perth")
-
             for idx, job in enumerate(jobs, 1):
-                # ---------- closing-date massaging ---------------------
+                # --- Parse and normalize closing date information ---
                 closing_in  = job.get("closing_in", "") or ""
                 closing_date = None
                 if closing_in:
@@ -123,7 +143,6 @@ def background_scraper(
                     d_m = re.search(r"(\d+)\s*days?",  txt)
                     m_m = re.search(r"(\d+)\s*months?", txt)
                     h_m = re.search(r"(\d+)\s*hours?",  txt)
-
                     if "an hour" in txt or h_m:
                         closing_date = now            # today
                         hours = int(h_m.group(1)) if h_m else 1
@@ -137,8 +156,7 @@ def background_scraper(
                         closing_date = now + timedelta(days=30*months)
                         closing_in  = f"Closing in {months} month{'s' if months>1 else ''}"
                     # else: leave closing_date = None
-
-                # ---------- DB insert ---------------------------------
+                # --- Insert scraped job into DB ---
                 scraped = ScrapedJob(
                     user_id        = user_id,
                     title          = job.get("title"),
@@ -161,8 +179,7 @@ def background_scraper(
                 )
                 db.session.add(scraped)
                 db.session.commit()
-
-                # ---------- push to SSE queue -------------------------
+                # --- Push job to SSE queue for live streaming ---
                 about = job.get("about_company", [])
                 live_job_queue.put({
                     "title"       : scraped.title,
@@ -176,39 +193,43 @@ def background_scraper(
                     "tag_jobtype" : jobtype,
                     "tag_category": discipline,
                 })
-
                 if debug:
                     print(f"[SCRAPER] ({idx}/{len(jobs)}) queued: {scraped.title}")
-
-                time.sleep(0.1)   # polite pause for the stream
-
+                time.sleep(0.1)   # Polite pause for the stream
         except Exception as exc:
             db.session.rollback()
             print("[SCRAPER] ERROR:", exc)
             import traceback; traceback.print_exc()
-
         finally:
+            # Signal completion to SSE clients
             live_job_queue.put({"status": "complete"})
             if debug:
                 print("[SCRAPER] finished – sentinel queued")
-# ─────────────────────────────────────────────────────────────────────────────
-
-
+# =============================================================================
+# Job Matching Utility
+# =============================================================================
 def job_matches(job, search, location, job_type, category, confidence=0.35):
-    """Check if a job matches the search criteria"""
+    """Check if a job matches the search criteria using basic and tag-based filtering.
+    Args:
+        job (ScrapedJob): The job object to check.
+        search (str): Search term for title/full text.
+        location (str): Location filter.
+        job_type (str): Job type filter.
+        category (str): Category filter.
+        confidence (float): (Unused) Confidence threshold for fuzzy matching.
+    Returns:
+        bool: True if job matches all filters, False otherwise.
+    """
     if not job:
         return False
-        
     # If no filters are applied, return all jobs
     if not any([search, location, job_type, category]):
         return True
-        
     # Convert all search terms to lowercase for case-insensitive matching
     search = search.lower()
     location = location.lower()
     job_type = job_type.lower()
     category = category.lower()
-    
     # Basic text search in title and full text
     basic_match = (
         (not search or 
@@ -216,33 +237,40 @@ def job_matches(job, search, location, job_type, category, confidence=0.35):
          (job.full_text and search in job.full_text.lower())
         )
     )
-    
     # Tag-based filtering
     location_match = (
         not location or 
         (job.tag_location and location in job.tag_location.lower())
     )
-    
     job_type_match = (
         not job_type or 
         (job.tag_jobtype and job_type in job.tag_jobtype.lower())
     )
-    
     category_match = (
         not category or 
         (job.tag_category and category in job.tag_category.lower())
     )
-    
     return basic_match and location_match and job_type_match and category_match
 
+# =============================================================================
+# Blueprint Registration
+# =============================================================================
 main_bp = Blueprint('main', __name__)
 
+# =============================================================================
+# Route: Home Page
+# =============================================================================
 @main_bp.route("/")
 def home():
+    """Render the landing page."""
     return render_template("index.html")
 
+# =============================================================================
+# Route: User Signup
+# =============================================================================
 @main_bp.route("/signup", methods=["POST"])
 def signup():
+    """Handle user registration and login after signup."""
     name = request.form.get("name")
     email = request.form.get("email")
     password = request.form.get("password")
@@ -261,8 +289,12 @@ def signup():
         return redirect(url_for("main.dashboard"))
     return render_template("index.html", error="All fields are required.")
 
+# =============================================================================
+# Route: User Signin
+# =============================================================================
 @main_bp.route("/signin", methods=["GET", "POST"])
 def signin():
+    """Handle user login (GET for form, POST for authentication)."""
     if request.method == "GET":
         # Render the login page for GET requests (Flask-Login redirects here if not authenticated)
         return render_template("index.html")  # Change to your login template if different
@@ -281,9 +313,13 @@ def signin():
             return render_template("index.html", error="Invalid Email or Password.")
     return render_template("index.html", error="All fields are required.")
 
+# =============================================================================
+# Route: Dashboard
+# =============================================================================
 @main_bp.route("/dashboard")
 @login_required  # Require login for dashboard
 def dashboard():
+    """Render the user dashboard with application stats, achievements, and job suggestions."""
     user = current_user
     applications = JobApplication.query.filter_by(user=user).all()
     all_statuses = ["Saved", "Applied", "Screen", "Interviewing", "Offer", "Accepted", "Archived", "Discontinued"]
@@ -305,7 +341,7 @@ def dashboard():
     in_progress = sum(status_counts_dict[s] for s in all_statuses if s not in ["Accepted", "Archived", "Discontinued"])
     active_applications = [app for app in applications if app.status not in {"Accepted", "Archived", "Discontinued"}]
     active_count = len(active_applications)
-    # Achievements
+    # --- Achievements logic ---
     achievements = []
     if applied >= 1:
         achievements.append(("First Application Sent", "You're on your way!", "green"))
@@ -332,7 +368,7 @@ def dashboard():
     if status_counts_dict["Discontinued"] >= 1:
         achievements.append(("No Longer Pursuing", "Moved on from a role.", "rose"))
     badges_earned = len(achievements)
-    # New Sneak Peek Data
+    # --- Sneak Peek Data: random jobs and soonest closing jobs ---
     random_jobs = ScrapedJob.query.order_by(db.func.random()).limit(3).all()
     total_apps = len(applications)
     success_rate = round((offers / total_apps) * 100, 1) if total_apps else 0
