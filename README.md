@@ -75,7 +75,7 @@ The platform is built for the UWA CITS3403 Software Project unit 2025 Semester 1
 
 3. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip3 install -r requirements.txt
    ```
 
 4. **Configure environment variables**  
