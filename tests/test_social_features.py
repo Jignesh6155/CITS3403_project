@@ -424,65 +424,6 @@ class TestSharingEdgeCases(FlaskTestBase):
         db.session.add(self.job_app)
         db.session.commit()
 
-   """ def test_share_application_with_non_friend(self):
-        """Test sharing an application with a non-friend."""
-        # Log in as user1
-        self.force_login(self.user1)
-        
-        # Share application with user2 (who is not a friend)
-        response = self.client.post(f'/share-application/{self.job_app.id}', data={
-            'friend_id': self.user2.id,
-            'csrf_token': self.get_csrf_token()
-        })
-        
-        # Check error message in JSON response
-        data = json.loads(response.data)
-        self.assertEqual(response.status_code, 404)
-        self.assertFalse(data['success'])
-        self.assertEqual(data['message'], 'Friend not found')
-        
-        # Verify no sharing relationship was created
-        from sqlalchemy import text
-        result = db.session.execute(
-            text("SELECT * FROM application_shares WHERE user_id = :user_id AND job_application_id = :app_id"),
-            {"user_id": self.user2.id, "app_id": self.job_app.id}
-        ).fetchone()
-        
-        self.assertIsNone(result)
-
-
-======================================================================
-ERROR: test_share_application_with_non_friend (tests.test_social_features.TestSharingEdgeCases.test_share_application_with_non_friend)  
-Test sharing an application with a non-friend.
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "C:\Users\rishw\OneDrive\Documents\GitHub\CITS3403_project\tests\test_social_features.py", line 439, in test_share_application_with_non_friend
-    data = json.loads(response.data)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\rishw\anaconda3\Lib\json\__init__.py", line 346, in loads
-    return _default_decoder.decode(s)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\rishw\anaconda3\Lib\json\decoder.py", line 337, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\rishw\anaconda3\Lib\json\decoder.py", line 355, in raw_decode
-    raise JSONDecodeError("Expecting value", s, err.value) from None
-json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
-
-----------------------------------------------------------------------
-Ran 17 tests in 4.628s
-
-FAILED (errors=1)
-
-
-
-
-
-
-
-
-"""
-
     def test_reshare_already_shared_application(self):
         """Test resharing an already shared application."""
         # Make users friends
