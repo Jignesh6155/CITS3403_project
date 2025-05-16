@@ -9,7 +9,7 @@ functionality with external components.
 
 import unittest
 from unittest.mock import patch, MagicMock
-from app.utils import fuzzy_search, resume_processor, scraper_GC_jobs, scraper_GC_jobs_detailed
+from app.utils import fuzzy_search, resume_processor, scraper_GC_jobs_detailed
 
 class TestFuzzySearch(unittest.TestCase):
     """
