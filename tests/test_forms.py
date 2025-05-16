@@ -48,7 +48,7 @@ class TestFormValidation(FlaskTestBase):
         self.assertIn(b'All fields are required', resp.data)
 
     def test_signup_duplicate_email(self):
-         """
+        """
         Test signup form validation for duplicate email addresses.
         
         Verifies that the application correctly detects and rejects
