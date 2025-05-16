@@ -7,29 +7,22 @@
  * - Favorite friend toggling and persistence
  * - Shared applications tab switching
  * - Friend search functionality
- * - Handling friend requests
+ * - Friend request handling
  * - Application sharing modal
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize filter toggle functionality
+  // Initialize all component functionality
   initFilterToggle();
-  
-  // Initialize enhanced friends list with alphabetical indexing and pagination
   initEnhancedFriendsList();
-  
-  // Initialize favorite functionality
   initFavoriteFunctionality();
-  
-  // Tab switching for shared applications
   initTabSwitching();
-  
-  // Share modal functionality
   initShareModal();
 });
 
 /**
  * Initialize collapsible filter section functionality
+ * Handles expanding/collapsing the filter panel
  */
 function initFilterToggle() {
   const filterToggle = document.getElementById('filter-toggle');
@@ -60,6 +53,7 @@ function initFilterToggle() {
 
 /**
  * Initialize favorite functionality
+ * Handles toggling and persisting favorite friend status
  */
 function initFavoriteFunctionality() {
   console.log("Initializing favorite functionality");
@@ -147,6 +141,7 @@ function initFavoriteFunctionality() {
 
 /**
  * Initialize the enhanced friends list with alphabetical indexing and pagination
+ * Handles filtering, pagination, and search functionality
  */
 function initEnhancedFriendsList() {
   // Get elements
@@ -188,7 +183,10 @@ function initEnhancedFriendsList() {
     }
   });
   
-  // Function to filter friends
+  /**
+   * Filter friends based on current filters and search term
+   * Updates visibility of friend items
+   */
   function filterFriends() {
     let filteredFriends = allFriends;
     
@@ -272,7 +270,10 @@ function initEnhancedFriendsList() {
     }
   }
   
-  // Function to paginate friends
+  /**
+   * Paginate filtered friends list
+   * @param {Array} friends - Array of friend elements to paginate
+   */
   function paginateFriends(friends) {
     // Hide all friends first
     allFriends.forEach(friend => {
@@ -307,7 +308,10 @@ function initEnhancedFriendsList() {
     }
   }
   
-  // Function to update the friends count display
+  /**
+   * Update the friends count display
+   * @param {number} count - Number of friends currently filtered
+   */
   function updateFriendsCount(count) {
     const total = allFriends.length;
     
@@ -353,6 +357,9 @@ function initEnhancedFriendsList() {
         
         // Update current filter
         currentFilter = this.getAttribute('data-filter');
+        
+        // Save to window for external access
+        window.currentFilter = currentFilter;
         
         // Reset to first page
         currentPage = 1;
@@ -400,7 +407,10 @@ function initEnhancedFriendsList() {
     filterFriends();
   });
   
-  // Helper function to get currently filtered friends
+  /**
+   * Helper function to get currently filtered friends
+   * @returns {Array} Array of friend elements matching current filters
+   */
   function getFilteredFriends() {
     let filteredFriends = allFriends;
     
@@ -450,6 +460,7 @@ function initEnhancedFriendsList() {
 
 /**
  * Filter pending requests based on search term
+ * @param {string} searchTerm - The search term to filter by
  */
 function filterPendingRequests(searchTerm) {
   const pendingItems = document.querySelectorAll('#pending-requests-list .friend-item');
@@ -522,12 +533,21 @@ function switchTab(tabName) {
   filterApplications();
 }
 
+/**
+ * Initialize the share modal functionality
+ */
+function initShareModal() {
+  // Add any specific init code for the share modal
+}
+
 // Make the key functions available globally
 window.filterFriends = filterFriends;
 window.filterPendingRequests = filterPendingRequests;
 window.switchTab = switchTab;
 
-// --- SHARED APPLICATIONS: IMPLEMENTED FUNCTIONS ---
+/**
+ * Filter shared applications based on search input and dropdown selections
+ */
 function filterApplications() {
   console.log("Filtering applications...");
   
@@ -576,6 +596,10 @@ function filterApplications() {
   });
 }
 
+/**
+ * Save a shared application to user's tracker
+ * @param {string} appId - ID of the application to save
+ */
 function saveApplication(appId) {
   const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
   
@@ -598,7 +622,7 @@ function saveApplication(appId) {
         }
       }
       
-      // Show success message
+      // Show success message by updating button
       const saveBtn = document.getElementById(`save-btn-${appId}`);
       if (saveBtn) {
         saveBtn.innerHTML = `
@@ -624,6 +648,9 @@ function saveApplication(appId) {
   });
 }
 
+/**
+ * Reset all application filters to their default values
+ */
 function resetFilters() {
   // Reset the search input
   const searchInput = document.getElementById('job-search');
@@ -659,6 +686,7 @@ window.debugFavorites = function() {
   console.log("Favorites in localStorage:", favoritesInStorage);
 };
 
+// Register global functions
 window.resetFilters = resetFilters;
 window.filterApplications = filterApplications;
 window.saveApplication = saveApplication;
