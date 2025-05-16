@@ -127,5 +127,6 @@ class Notification(db.Model):
 # This function must be registered with the LoginManager instance in your app factory (see __init__.py)
 # It tells Flask-Login how to load a user from a user ID stored in the session.
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    from app import db
+    return db.session.get(User, int(user_id))
 

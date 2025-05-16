@@ -826,7 +826,8 @@ def send_friend_request():
 @login_required
 def handle_friend_request(request_id):
     user = current_user
-    friend_request = FriendRequest.query.get(request_id)
+    from app import db
+    friend_request = db.session.get(FriendRequest, request_id)
     # Security checks
     if not friend_request or friend_request.receiver_id != user.id:
         flash('Invalid request', 'error')
@@ -835,7 +836,7 @@ def handle_friend_request(request_id):
     if action == 'accept':
         friend_request.status = 'accepted'
         # Add to friends (both ways)
-        sender = User.query.get(friend_request.sender_id)
+        sender = db.session.get(User, friend_request.sender_id)
         # Ensure bidirectional friendship
         user.friends.append(sender)
         sender.friends.append(user)
@@ -938,7 +939,8 @@ def get_applications():
 @login_required
 def share_application(app_id):
     user = current_user
-    application = JobApplication.query.get(app_id)
+    from app import db
+    application = db.session.get(JobApplication, app_id)
     if not application or application.user_id != user.id:
         flash('Application not found or you do not own this application', 'error')
         return redirect(url_for('main.job_tracker'))
@@ -948,7 +950,7 @@ def share_application(app_id):
         flash('No friend selected', 'error')
         return redirect(url_for('main.job_tracker'))
         
-    friend = User.query.get(friend_id)
+    friend = db.session.get(User, friend_id)
     if friend and friend in user.friends:
         # Check if already shared
         existing_share = db.session.query(application_shares).filter_by(
@@ -994,7 +996,8 @@ def share_application(app_id):
 def update_job_status():
     job_id = request.json.get("job_id")
     new_status = request.json.get("new_status")
-    job = JobApplication.query.get(job_id)
+    from app import db
+    job = db.session.get(JobApplication, job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
     job.status = new_status
@@ -1077,7 +1080,8 @@ def notifications():
 @login_required  # Use Flask-Login's decorator
 def delete_application(job_id):
     # Use current_user from Flask-Login
-    application = JobApplication.query.get(job_id)
+    from app import db
+    application = db.session.get(JobApplication, job_id)
     if not application:
         return jsonify({"error": "Application not found"}), 404
         
@@ -1097,7 +1101,8 @@ def save_shared_application(app_id):
     user = current_user
     
     # Get the original application
-    shared_app = JobApplication.query.get(app_id)
+    from app import db
+    shared_app = db.session.get(JobApplication, app_id)
     if not shared_app:
         return jsonify({"error": "Application not found"}), 404
         
@@ -1145,7 +1150,8 @@ def update_application(job_id):
     user = current_user
     if not user:
         return jsonify({"error": "User not found"}), 404
-    application = JobApplication.query.get(job_id)
+    from app import db
+    application = db.session.get(JobApplication, job_id)
     if not application:
         return jsonify({"error": "Application not found"}), 404
     if application.user_id != user.id:

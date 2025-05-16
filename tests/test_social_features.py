@@ -94,7 +94,7 @@ class TestSocialFeatures(FlaskTestBase):
         }, follow_redirects=True)
         
         # Verify request was accepted
-        updated_request = FriendRequest.query.get(friend_request.id)
+        updated_request = db.session.get(FriendRequest, friend_request.id)
         self.assertEqual(updated_request.status, 'accepted')
         
         # Verify friendship was established (both ways)
@@ -122,7 +122,7 @@ class TestSocialFeatures(FlaskTestBase):
         }, follow_redirects=True)
         
         # Verify request was rejected
-        updated_request = FriendRequest.query.get(friend_request.id)
+        updated_request = FriendRequest.query.filter_by(id=friend_request.id).first()
         self.assertEqual(updated_request.status, 'rejected')
         
         # Verify friendship was NOT established
@@ -235,7 +235,7 @@ class TestSocialFeatures(FlaskTestBase):
         self.assertTrue(data['success'])
         
         # Verify name was updated in database
-        updated_user = User.query.get(self.user1.id)
+        updated_user = db.session.get(User, self.user1.id)
         self.assertEqual(updated_user.name, new_name)
         
         # Verify notification was created
@@ -380,7 +380,7 @@ class TestFriendRequestsEdgeCases(FlaskTestBase):
         self.assertIn(self.user1, self.user2.friends.all())
         
         # Verify the original request is now accepted
-        updated_request = FriendRequest.query.get(friend_request.id)
+        updated_request = FriendRequest.query.filter_by(id=friend_request.id).first()
         self.assertEqual(updated_request.status, 'accepted')
         
         # Check for success message
@@ -525,7 +525,7 @@ class TestAccountSettingsEdgeCases(FlaskTestBase):
         self.assertIn('required', data['message'].lower())
         
         # Verify name didn't change
-        updated_user = User.query.get(self.user.id)
+        updated_user = db.session.get(User, self.user.id)
         self.assertEqual(updated_user.name, 'Alice')
 
     def test_update_password_wrong_current(self):
