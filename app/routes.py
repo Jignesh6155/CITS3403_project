@@ -490,7 +490,7 @@ def analytics():
         cum_counts  = cum_counts,
     )
 
-@main_bp.route("/comms")
+@main_bp.route('/comms')
 @login_required
 def comms():
     # Get all friends
@@ -511,7 +511,7 @@ def comms():
     shared_apps = []
     app_statuses = {}
     
-    # Get applications shared with current user
+    # Get ONLY applications shared WITH current user (remove the shared BY user section)
     shared_with_user = db.session.query(JobApplication, application_shares.c.status).join(
         application_shares,
         JobApplication.id == application_shares.c.job_application_id
@@ -522,20 +522,7 @@ def comms():
     for app, status in shared_with_user:
         shared_apps.append(app)
         app_statuses[app.id] = status
-    
-    # Get applications shared by current user
-    shared_by_user = db.session.query(JobApplication, application_shares.c.status).join(
-        application_shares,
-        JobApplication.id == application_shares.c.job_application_id
-    ).filter(
-        JobApplication.user_id == current_user.id
-    ).all()
-    
-    for app, status in shared_by_user:
-        if app not in shared_apps:
-            shared_apps.append(app)
-            app_statuses[app.id] = status
-    
+        
     # Count shared apps per friend
     for friend in friends:
         count = db.session.query(application_shares).filter(
@@ -558,7 +545,6 @@ def comms():
         shared_apps=shared_apps,
         app_statuses=app_statuses
     )
-
 @main_bp.route("/upload", methods=["POST"])
 def upload():
     f = request.files.get("resume")
