@@ -127,7 +127,8 @@ def get_jobs_full(jobtype:   str,
                   location:   str | None = None,
                   keyword:    str | None = None,
                   max_pages:  int = 10,
-                  headless:   bool = False) -> list[dict]:
+                  headless:   bool = True,
+                  debug:      bool = False) -> list[dict]:
     """
     Navigate through the search results, collect each job link, visit and scrape all job information.
     """
@@ -186,7 +187,8 @@ def get_jobs_full(jobtype:   str,
                     driver.switch_to.window(driver.window_handles[0])
 
                 except Exception as e:
-                    print(f"Error scraping job: {e}")
+                    if debug:
+                        print(f"Error scraping job: {e}")
                     try:
                         driver.close()
                         driver.switch_to.window(driver.window_handles[0])
@@ -194,7 +196,8 @@ def get_jobs_full(jobtype:   str,
                         pass
                     continue
 
-            print(f"[page {page}] collected {len(jobs)} jobs so far")
+            if debug:
+                print(f"[page {page}] collected {len(jobs)} jobs so far")
 
         return jobs
 
@@ -235,7 +238,8 @@ if __name__ == "__main__":
         location="perth",
         keyword=None,
         max_pages=1,
-        headless=True # False shows browser window while scraping
+        headless=True, # False shows browser window while scraping
+        debug=True
     )
 
     print(f"\nFound {len(results)} full jobs")

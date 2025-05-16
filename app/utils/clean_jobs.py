@@ -10,7 +10,7 @@ from app import app, db
 from app.models import ScrapedJob
 from datetime import datetime
 
-def clean_jobs():
+def clean_jobs(debug=False):
     """
     Safely remove all scraped job listings from the database.
     Returns the number of entries deleted.
@@ -21,14 +21,17 @@ def clean_jobs():
             # Get total count before deletion
             total_jobs = ScrapedJob.query.count()
             
-            print(f"[INFO] Found {total_jobs} job listings in the database")
+            if debug:
+                print(f"[INFO] Found {total_jobs} job listings in the database")
             
             if total_jobs == 0:
-                print("[INFO] No job listings to clean")
+                if debug:
+                    print("[INFO] No job listings to clean")
                 return 0
             
             # Delete all scraped jobs
-            print("[INFO] Starting deletion...")
+            if debug:
+                print("[INFO] Starting deletion...")
             ScrapedJob.query.delete()
             
             # Commit the changes
@@ -37,14 +40,17 @@ def clean_jobs():
             # Verify deletion
             remaining_jobs = ScrapedJob.query.count()
             if remaining_jobs == 0:
-                print(f"[SUCCESS] Successfully deleted {total_jobs} job listings")
+                if debug:
+                    print(f"[SUCCESS] Successfully deleted {total_jobs} job listings")
                 return total_jobs
             else:
-                print(f"[WARNING] {remaining_jobs} jobs remain in the database")
+                if debug:
+                    print(f"[WARNING] {remaining_jobs} jobs remain in the database")
                 return total_jobs - remaining_jobs
                 
     except Exception as e:
-        print(f"[ERROR] An error occurred while cleaning jobs: {str(e)}")
+        if debug:
+            print(f"[ERROR] An error occurred while cleaning jobs: {str(e)}")
         # Rollback any changes if there was an error
         db.session.rollback()
         return 0
@@ -57,7 +63,7 @@ def main():
     print("-" * 50)
     
     try:
-        deleted_count = clean_jobs()
+        deleted_count = clean_jobs(debug=True)
         print("-" * 50)
         print(f"[COMPLETE] Cleanup finished at {datetime.now()}")
         print(f"[SUMMARY] Deleted {deleted_count} job listings")

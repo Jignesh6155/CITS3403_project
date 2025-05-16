@@ -14,7 +14,7 @@ OPENAI_MODEL = "gpt-3.5-turbo"
 # You may want to move the API key to a config file or environment variable
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-def extract_text_from_pdf(file_stream):
+def extract_text_from_pdf(file_stream, debug=False):
     """Extract text from a PDF file."""
     try:
         if isinstance(file_stream, bytes):
@@ -25,10 +25,11 @@ def extract_text_from_pdf(file_stream):
             text += page.extract_text() + "\n"
         return text
     except Exception as e:
-        print(f"Error extracting text from PDF: {e}")
+        if debug:
+            print(f"Error extracting text from PDF: {e}")
         return ""
 
-def extract_text_from_docx(file_stream):
+def extract_text_from_docx(file_stream, debug=False):
     """Extract text from a DOCX file."""
     try:
         if isinstance(file_stream, bytes):
@@ -36,15 +37,16 @@ def extract_text_from_docx(file_stream):
         text = docx2txt.process(file_stream)
         return text
     except Exception as e:
-        print(f"Error extracting text from DOCX: {e}")
+        if debug:
+            print(f"Error extracting text from DOCX: {e}")
         return ""
 
-def extract_text(file_stream, content_type):
+def extract_text(file_stream, content_type, debug=False):
     """Extract text from a resume file based on its content type."""
     if "pdf" in content_type:
-        return extract_text_from_pdf(file_stream)
+        return extract_text_from_pdf(file_stream, debug=debug)
     elif "docx" in content_type or "document" in content_type:
-        return extract_text_from_docx(file_stream)
+        return extract_text_from_docx(file_stream, debug=debug)
     return ""
 
 def extract_keywords_openai(text, direction=None, model=None, api_key=None):

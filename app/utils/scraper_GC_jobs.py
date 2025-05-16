@@ -54,7 +54,8 @@ def get_jobs(jobtype:   str,
              location:   str | None = None,
              keyword:    str | None = None,
              max_pages:  int = 10,
-             headless:   bool = False) -> list[dict]:
+             headless:   bool = True,
+             debug:      bool = False) -> list[dict]:
     """
     Navigate through the search results and harvest every <div class="campaign-box">.
     """
@@ -86,7 +87,7 @@ def get_jobs(jobtype:   str,
             except Exception:
                 pass
 
-            # scroll to lift GC’s lazy-load height cap -------------------------
+            # scroll to lift GC's lazy-load height cap -------------------------
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(0.8)
 
@@ -102,7 +103,7 @@ def get_jobs(jobtype:   str,
                         continue
                     seen.add(link)
 
-                    try:                # “Closing in …” text may be absent
+                    try:                # "Closing in ..." text may be absent
                         closing = box.find_element(
                             By.CSS_SELECTOR, "div.box-closing-interval span"
                         ).text.strip()
@@ -117,8 +118,9 @@ def get_jobs(jobtype:   str,
                 except Exception:
                     continue
 
-            print(f"[page {page}] collected {len(cards)} cards "
-                  f"({len(jobs)} total)")
+            if debug:
+                print(f"[page {page}] collected {len(cards)} cards "
+                      f"({len(jobs)} total)")
 
         return jobs
 
@@ -129,7 +131,7 @@ def get_jobs(jobtype:   str,
 # ───────────────────────────── CLI example ────────────────────────────────────
 if __name__ == "__main__":
     """
-    Example: internships → engineering-software → perth → keyword “fpga”
+    Example: internships → engineering-software → perth → keyword "fpga"
     Change the arguments or call `get_jobs()` directly from other code.
     """
     results = get_jobs(
@@ -138,7 +140,8 @@ if __name__ == "__main__":
         location="perth",
         keyword=None,
         max_pages=3,           # scrape up to 3 pages
-        headless=True          # set to False to watch the browser work
+        headless=True,         # set to False to watch the browser work
+        debug=True
     )
 
     print(f"\nFound {len(results)} unique jobs")
