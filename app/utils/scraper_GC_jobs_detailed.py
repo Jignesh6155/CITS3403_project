@@ -5,26 +5,69 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time, json
 
+"""
+GradConnection Job Scraper Utilities
+
+This module provides functions to scrape detailed job listings from the GradConnection website using Selenium.
+It includes helpers for URL construction, robust extraction of job details (handling various page layouts),
+pagination, and saving results to a database. Designed for use in automated job aggregation and enrichment pipelines.
+"""
+
 # ───────────────────────────── helpers ────────────────────────────────────────
 def build_url(jobtype: str, discipline: str | None = None, location: str | None = None, keyword: str | None = None) -> str:
+    """
+    Construct a GradConnection search URL based on job type, discipline, location, and optional keyword.
+
+    Args:
+        jobtype (str): The type of job (e.g., 'internships').
+        discipline (str, optional): The job discipline/category.
+        location (str, optional): The job location.
+        keyword (str, optional): Keyword to filter job titles.
+
+    Returns:
+        str: The constructed URL for the search query.
+    """
     path = "/".join(p.strip("/") for p in (jobtype, discipline, location) if p)
     url  = f"https://au.gradconnection.com/{path}/"
     if keyword:
         url += f"?title={keyword}"
     return url
+
 def add_page_param(base: str, page_no: int) -> str:
+    """
+    Add a page number parameter to a GradConnection search URL.
+
+    Args:
+        base (str): The base URL.
+        page_no (int): The page number to append.
+
+    Returns:
+        str: The URL with the page parameter added.
+    """
     joiner = "&" if "?" in base else "?"
     return f"{base}{joiner}page={page_no}"
 
 def scrape_job_detail(driver) -> dict:
     """
-    Extract full job info from GradConnection job pages, handling all variations seen so far.
+    Extract full job information from a GradConnection job detail page.
+
+    Args:
+        driver (selenium.webdriver): The Selenium WebDriver instance, already on the job detail page.
+
+    Returns:
+        dict: A dictionary containing all extracted job fields, including structured sections.
+
+    This function is robust to variations in page structure and attempts to extract as much information as possible.
     """
     import re
     wait = WebDriverWait(driver, 10)
-    time.sleep(1)
+    time.sleep(1)  # Allow dynamic content to load
 
     def safe_text(selector, many=False):
+        """
+        Safely extract text or elements from the page using a CSS selector.
+        Returns 'n/a' or [] on failure, depending on the 'many' flag.
+        """
         try:
             if many:
                 return driver.find_elements(By.CSS_SELECTOR, selector)
@@ -49,12 +92,12 @@ def scrape_job_detail(driver) -> dict:
         "about_company": [],
     }
 
-    # Gather text elements
+    # Gather text elements for further parsing
     paragraphs = safe_text("div.campaign-content-container p", many=True)
     headings = safe_text("div.campaign-content-container h2", many=True)
     lists = safe_text("div.campaign-content-container ul, div.campaign-content-container ul.ak-ul", many=True)
 
-    # Map headings to normalized labels
+    # Map possible heading text to normalized section keys
     section_mapping = {
         "about": "overview",
         "overview": "overview",
@@ -74,17 +117,20 @@ def scrape_job_detail(driver) -> dict:
         "perks & benefits": "about_company",
     }
 
-    # Helper to map a heading into one of our section keys
     def map_heading(text):
+        """
+        Map a heading string to a section key using the section_mapping dictionary.
+        Returns None if no match is found.
+        """
         text = text.lower().strip()
         for key, value in section_mapping.items():
             if key in text:
                 return value
         return None
 
-    current_section = "overview"  # Default if no headings found yet
+    current_section = "overview"  # Default section if no headings found yet
 
-    # Step through elements in order
+    # Step through elements in order, assigning content to the correct section
     for elem in paragraphs + headings + lists:
         tag = elem.tag_name.lower()
         text = elem.text.strip()
@@ -127,10 +173,24 @@ def get_jobs_full(jobtype:   str,
                   location:   str | None = None,
                   keyword:    str | None = None,
                   max_pages:  int = 10,
-                  headless:   bool = True,
+                  headless:   bool = False,
                   debug:      bool = False) -> list[dict]:
     """
-    Navigate through the search results, collect each job link, visit and scrape all job information.
+    Scrape all job listings from GradConnection search results, visiting each job page for full details.
+
+    Args:
+        jobtype (str): The type of job (e.g., 'internships').
+        discipline (str, optional): The job discipline/category.
+        location (str, optional): The job location.
+        keyword (str, optional): Keyword to filter job titles.
+        max_pages (int): Maximum number of result pages to scrape.
+        headless (bool): Whether to run the browser in headless mode.
+        debug (bool): If True, prints debug information.
+
+    Returns:
+        list[dict]: A list of dictionaries, each containing detailed job information.
+
+    This function handles pagination, popups, and robustly collects all job links and their details.
     """
     base = build_url(jobtype, discipline, location, keyword)
 
@@ -151,6 +211,7 @@ def get_jobs_full(jobtype:   str,
             driver.get(url)
 
             try:
+                # Attempt to close any login popups that may block interaction
                 wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
                                                        "button.forcelogin-close-btn"))
                            ).click()
@@ -158,6 +219,7 @@ def get_jobs_full(jobtype:   str,
             except Exception:
                 pass
 
+            # Scroll to the bottom to ensure all jobs are loaded
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(1)
 
@@ -173,7 +235,7 @@ def get_jobs_full(jobtype:   str,
                         continue
                     seen.add(link)
 
-                    # Visit individual job page
+                    # Visit individual job page in a new tab
                     driver.execute_script("window.open('');")
                     driver.switch_to.window(driver.window_handles[1])
                     driver.get(link)
@@ -187,8 +249,7 @@ def get_jobs_full(jobtype:   str,
                     driver.switch_to.window(driver.window_handles[0])
 
                 except Exception as e:
-                    if debug:
-                        print(f"Error scraping job: {e}")
+                    print(f"Error scraping job: {e}")
                     try:
                         driver.close()
                         driver.switch_to.window(driver.window_handles[0])
@@ -196,8 +257,7 @@ def get_jobs_full(jobtype:   str,
                         pass
                     continue
 
-            if debug:
-                print(f"[page {page}] collected {len(jobs)} jobs so far")
+            print(f"[page {page}] collected {len(jobs)} jobs so far")
 
         return jobs
 
@@ -205,6 +265,16 @@ def get_jobs_full(jobtype:   str,
         driver.quit()
 
 def save_jobs_to_db(jobs, user_id, source="GradConnection"):
+    """
+    Save a list of scraped jobs to the database for a specific user and source.
+
+    Args:
+        jobs (list[dict]): The list of job dictionaries to save.
+        user_id (int): The user ID to associate with the jobs.
+        source (str): The source label for the jobs (default: 'GradConnection').
+
+    This function first deletes any existing scraped jobs for the user/source, then inserts the new jobs.
+    """
     from app.models import db, ScrapedJob
     import json
     # Delete existing scraped jobs for this user and source
@@ -238,8 +308,7 @@ if __name__ == "__main__":
         location="perth",
         keyword=None,
         max_pages=1,
-        headless=True, # False shows browser window while scraping
-        debug=True
+        headless=True # False shows browser window while scraping
     )
 
     print(f"\nFound {len(results)} full jobs")
