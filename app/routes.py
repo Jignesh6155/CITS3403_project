@@ -81,7 +81,6 @@ def create_notification(user_id, content, link=None, notification_type="general"
 # Global Variables for Scraping (for testing/demo purposes)
 # =============================================================================
 live_job_queue = queue.Queue()  # Queue for streaming scraped jobs to clients
-HEADLESS_TOGGLE = False         # Toggle for headless browser scraping
 SCRAPE_SIZE = 1                 # Number of pages to scrape per request
 
 # =============================================================================
@@ -120,7 +119,7 @@ def background_scraper(
                 location=location,
                 keyword=keyword,
                 max_pages=SCRAPE_SIZE,
-                headless=HEADLESS_TOGGLE,
+                headless=current_app.config.get('HEADLESS_TOGGLE', False),
             )
             if debug:
                 print(f"[SCRAPER] {len(jobs)} jobs scraped")
@@ -198,7 +197,8 @@ def background_scraper(
                 time.sleep(0.1)   # Polite pause for the stream
         except Exception as exc:
             db.session.rollback()
-            print("[SCRAPER] ERROR:", exc)
+            if debug:
+                print("[SCRAPER] ERROR:", exc)
             import traceback; traceback.print_exc()
         finally:
             # Signal completion to SSE clients
@@ -635,7 +635,8 @@ def upload():
 # ------------------------------------------------------------------ #
 @main_bp.route("/api/scraped-jobs")
 def api_scraped_jobs():
-    print("\n=== [/api/scraped-jobs] request received =====================")
+    if current_app.config.get('DEBUG', False):
+        print("\n=== [/api/scraped-jobs] request received =====================")
     try:
         # ── query-string params ────────────────────────────────────────
         search    = request.args.get("search",    "").strip().lower()
@@ -645,19 +646,22 @@ def api_scraped_jobs():
         offset    = int(request.args.get("offset", 0))
         limit     = int(request.args.get("limit", 10))
 
-        print(f"[ARGS] search='{search}' location='{location}' "
-              f"type='{job_type}' category='{category}' offset={offset} limit={limit}")
+        if current_app.config.get('DEBUG', False):
+            print(f"[ARGS] search='{search}' location='{location}' "
+                  f"type='{job_type}' category='{category}' offset={offset} limit={limit}")
 
         # ── DB query & Python filtering  ───────────────────────────────
         jobs = ScrapedJob.query.all()
-        print(f"[DB] fetched {len(jobs)} rows from scraped_job")
+        if current_app.config.get('DEBUG', False):
+            print(f"[DB] fetched {len(jobs)} rows from scraped_job")
 
         filtered  = [j for j in jobs if job_matches(j, search, location,
                                                     job_type, category)]
         total     = len(filtered)
         paginated = filtered[offset: offset + limit]
 
-        print(f"[FILTER] {total} match filters, returning {len(paginated)} rows")
+        if current_app.config.get('DEBUG', False):
+            print(f"[FILTER] {total} match filters, returning {len(paginated)} rows")
 
         # ── serialise results  ─────────────────────────────────────────
         result = []
@@ -665,7 +669,8 @@ def api_scraped_jobs():
             try:
                 about = json.loads(job.about_company) if job.about_company else []
             except Exception as ex:
-                print(f"[WARN] json.loads failed for job.id={job.id}: {ex}")
+                if current_app.config.get('DEBUG', False):
+                    print(f"[WARN] json.loads failed for job.id={job.id}: {ex}")
                 about = []
 
             closing_date_str = (
@@ -687,17 +692,20 @@ def api_scraped_jobs():
                     "category": job.tag_category or None,
                 },
             })
-            print(f"[SERIALISE] #{idx}  job.id={job.id} title='{job.title}'")
+            if current_app.config.get('DEBUG', False):
+                print(f"[SERIALISE] #{idx}  job.id={job.id} title='{job.title}'")
 
         payload = {"jobs": result,
                    "has_more": offset + limit < total,
                    "total": total}
-        print("[RETURN] sending JSON payload")
-        print("============================================================\n")
+        if current_app.config.get('DEBUG', False):
+            print("[RETURN] sending JSON payload")
+            print("============================================================\n")
         return jsonify(payload)
 
     except Exception as e:
-        print("[ERROR] in /api/scraped-jobs:", e)
+        if current_app.config.get('DEBUG', False):
+            print("[ERROR] in /api/scraped-jobs:", e)
         import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -709,39 +717,47 @@ def api_scraped_jobs():
 @main_bp.route("/api/start-scraping", methods=["POST"])
 @csrf.exempt
 def api_start_scraping():
-    print("\n=== [/api/start-scraping] POST received =====================")
+    if current_app.config.get('DEBUG', False):
+        print("\n=== [/api/start-scraping] POST received =====================")
     try:
         user = current_user          # may be Anonymous if no login
-        print(f"[AUTH] current_user id={getattr(user,'id',None)} "
-              f"auth={user.is_authenticated if user else False}")
+        if current_app.config.get('DEBUG', False):
+            print(f"[AUTH] current_user id={getattr(user,'id',None)} "
+                  f"auth={user.is_authenticated if user else False}")
 
         data = request.get_json(force=True) or {}
-        print(f"[JSON] {data}")
+        if current_app.config.get('DEBUG', False):
+            print(f"[JSON] {data}")
 
         jobtype    = data.get("jobtype",    "internships")
         discipline = data.get("discipline") or None
         location   = data.get("location")   or None
         keyword    = data.get("keyword")    or None
-        print(f"[PARAMS] jobtype={jobtype} discipline={discipline} "
-              f"location={location} keyword={keyword}")
+        if current_app.config.get('DEBUG', False):
+            print(f"[PARAMS] jobtype={jobtype} discipline={discipline} "
+                f"location={location} keyword={keyword}")
 
         if user.is_authenticated and not rate_limit_check(user.id, "scraping"):
-            print("[RATE] hit limit – rejecting")
+            if current_app.config.get('DEBUG', False):
+                print("[RATE] hit limit – rejecting")
             return jsonify({"error": "Rate limit exceeded"}), 429
 
-        print("[THREAD] kicking off background_scraper() …")
+        if current_app.config.get('DEBUG', False):
+            print("[THREAD] kicking off background_scraper() …")
         app = current_app._get_current_object()
         threading.Thread(
             target=background_scraper,
             args=(app, getattr(user, "id", 1), jobtype, discipline, location, keyword),
             daemon=True
         ).start()
-        print("[THREAD] started OK")
-        print("============================================================\n")
+        if current_app.config.get('DEBUG', False):
+            print("[THREAD] started OK")
+            print("============================================================\n")
         return "", 202
 
     except Exception as e:
-        print("[ERROR] in /api/start-scraping:", e)
+        if current_app.config.get('DEBUG', False):
+            print("[ERROR] in /api/start-scraping:", e)
         import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -752,14 +768,17 @@ def api_start_scraping():
 # ------------------------------------------------------------------ #
 @main_bp.route("/api/scraping-stream")
 def api_scraping_stream():
-    print("\n=== [/api/scraping-stream] client connected ================")
+    if current_app.config.get('DEBUG', False):
+        print("\n=== [/api/scraping-stream] client connected ================")
 
     def event_stream():
-        print("[SSE] generator entered")
+        if current_app.config.get('DEBUG', False):
+            print("[SSE] generator entered")
         while True:
             try:
                 job = live_job_queue.get(timeout=30)
-                print(f"[SSE] dequeued → {job}")
+                if current_app.config.get('DEBUG', False):
+                    print(f"[SSE] dequeued → {job}")
 
                 if 'status' not in job:          # normal job payload
                     job["tags"] = {
@@ -771,24 +790,29 @@ def api_scraping_stream():
                 yield f"data: {json.dumps(job)}\n\n"
 
                 if job.get("status") == "complete":
-                    print("[SSE] scrape complete – closing stream")
+                    if current_app.config.get('DEBUG', False):
+                        print("[SSE] scrape complete – closing stream")
                     break
 
             except queue.Empty:
-                print("[SSE] queue empty – sending keep-alive ping")
+                if current_app.config.get('DEBUG', False):
+                    print("[SSE] queue empty – sending keep-alive ping")
                 yield 'data: {"type":"ping"}\n\n'
 
             except GeneratorExit:
                 # client disconnected
-                print("[SSE] client disconnected")
+                if current_app.config.get('DEBUG', False):
+                    print("[SSE] client disconnected")
                 break
 
             except Exception as ex:
-                print("[SSE] unexpected error:", ex)
+                if current_app.config.get('DEBUG', False):
+                    print("[SSE] unexpected error:", ex)
                 import traceback; traceback.print_exc()
                 break
 
-        print("[SSE] generator exiting")
+        if current_app.config.get('DEBUG', False):
+            print("[SSE] generator exiting")
 
     response = Response(stream_with_context(event_stream()),
                         mimetype="text/event-stream")
@@ -887,12 +911,14 @@ def handle_friend_request(request_id):
 @main_bp.route("/add-application", methods=["POST"])
 @login_required
 def add_application():
-    print("[DEBUG] /add-application route entered")
-    print("[DEBUG] request.is_json:", request.is_json)
-    print("[DEBUG] request.data:", request.data)
-    print("[DEBUG] request.form:", request.form)
+    if current_app.config.get('DEBUG', False):
+        print("[DEBUG] /add-application route entered")
+        print("[DEBUG] request.is_json:", request.is_json)
+        print("[DEBUG] request.data:", request.data)
+        print("[DEBUG] request.form:", request.form)
     from flask_login import current_user
-    print("[DEBUG] current_user.is_authenticated:", current_user.is_authenticated)
+    if current_app.config.get('DEBUG', False):    
+        print("[DEBUG] current_user.is_authenticated:", current_user.is_authenticated)
     from flask import current_app
     debug = current_app.config.get('DEBUG', False)
     try:
