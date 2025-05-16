@@ -1,6 +1,14 @@
 /**
- * Updated JavaScript for the Friends List Component
- * Adds collapsible filter section functionality
+ * Friends and Communications JavaScript
+ * 
+ * This file handles all functionality for the friends page, including:
+ * - Friend list filtering and pagination
+ * - Alphabetical indexing of friends
+ * - Favorite friend toggling and persistence
+ * - Shared applications tab switching
+ * - Friend search functionality
+ * - Handling friend requests
+ * - Application sharing modal
  */
 
 document.addEventListener('DOMContentLoaded', function() {
