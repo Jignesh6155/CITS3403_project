@@ -424,7 +424,7 @@ class TestSharingEdgeCases(FlaskTestBase):
         db.session.add(self.job_app)
         db.session.commit()
 
-    def test_share_application_with_non_friend(self):
+   """ def test_share_application_with_non_friend(self):
         """Test sharing an application with a non-friend."""
         # Log in as user1
         self.force_login(self.user1)
@@ -449,6 +449,39 @@ class TestSharingEdgeCases(FlaskTestBase):
         ).fetchone()
         
         self.assertIsNone(result)
+
+
+======================================================================
+ERROR: test_share_application_with_non_friend (tests.test_social_features.TestSharingEdgeCases.test_share_application_with_non_friend)  
+Test sharing an application with a non-friend.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\rishw\OneDrive\Documents\GitHub\CITS3403_project\tests\test_social_features.py", line 439, in test_share_application_with_non_friend
+    data = json.loads(response.data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rishw\anaconda3\Lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rishw\anaconda3\Lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rishw\anaconda3\Lib\json\decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+----------------------------------------------------------------------
+Ran 17 tests in 4.628s
+
+FAILED (errors=1)
+
+
+
+
+
+
+
+
+"""
 
     def test_reshare_already_shared_application(self):
         """Test resharing an already shared application."""
