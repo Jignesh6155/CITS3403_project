@@ -911,15 +911,16 @@ def handle_friend_request(request_id):
 @main_bp.route("/add-application", methods=["POST"])
 @login_required
 def add_application():
+    from flask_login import current_user
+    from flask import current_app
     if current_app.config.get('DEBUG', False):
         print("[DEBUG] /add-application route entered")
         print("[DEBUG] request.is_json:", request.is_json)
         print("[DEBUG] request.data:", request.data)
         print("[DEBUG] request.form:", request.form)
-    from flask_login import current_user
     if current_app.config.get('DEBUG', False):    
         print("[DEBUG] current_user.is_authenticated:", current_user.is_authenticated)
-    from flask import current_app
+    
     debug = current_app.config.get('DEBUG', False)
     try:
         if request.is_json:
