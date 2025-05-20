@@ -372,7 +372,10 @@
             <li class="py-2 px-3 hover:bg-gray-50 cursor-pointer share-friend-item" data-name="{{ friend.name|lower }}">
               <label class="flex items-center cursor-pointer w-full">
                 <input type="radio" name="friend_id" value="{{ friend.id }}" class="mr-2">
-                <span>{{ friend.name }}</span>
+                <span class="flex flex-col">
+                <span class="font-medium">{{ friend.name }}</span>
+                <span class="text-xs text-gray-500">{{ friend.email }}</span>
+              </span>
               </label>
             </li>
           {% endfor %}
