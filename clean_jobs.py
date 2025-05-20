@@ -10,9 +10,11 @@ This utility is intended for maintenance purposes, allowing administrators to cl
 without affecting other database records. It is safe to run multiple times and provides debug output for transparency.
 """
 
-from app import app, db
+from app import create_app, db
 from app.models import ScrapedJob
 from datetime import datetime
+
+app = create_app()
 
 
 def clean_jobs(debug=False):
