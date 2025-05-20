@@ -81,7 +81,7 @@ def create_notification(user_id, content, link=None, notification_type="general"
 # Global Variables for Scraping (for testing/demo purposes)
 # =============================================================================
 live_job_queue = queue.Queue()  # Queue for streaming scraped jobs to clients
-SCRAPE_SIZE = 1                 # Number of pages to scrape per request
+SCRAPE_SIZE = 1    # Number of pages to scrape per request
 
 # =============================================================================
 # Background Scraper Thread
@@ -263,7 +263,9 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route("/")
 def home():
     """Render the landing page."""
-    return render_template("index.html")
+    from flask import current_app
+    show_dummy_users = current_app.config.get("DEBUG", False)
+    return render_template("index.html", show_dummy_users=show_dummy_users)
 
 # =============================================================================
 # Route: User Signup

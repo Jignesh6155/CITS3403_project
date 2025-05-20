@@ -14,7 +14,7 @@
 
   <!-- Inline JavaScript for UI Interactions -->
   <script defer>
-    const SHOW_DUMMY_USERS = false;  // Toggle display of dummy user selection
+    const SHOW_DUMMY_USERS = {{ show_dummy_users | tojson }};
 
     // Predefined dummy users for quick testing
     const dummyUsers = [
